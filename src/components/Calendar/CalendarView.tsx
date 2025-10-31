@@ -1,0 +1,704 @@
+import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, User, Plus, CreditCard as Edit, Eye } from 'lucide-react';
+import { useData } from '../../contexts/DataContext';
+import { useAuth } from '../../contexts/AuthContext';
+
+export function CalendarView() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<'month' | 'week' | 'day'>('month');
+  const { jobs, users, updateJob } = useData();
+  const { user: currentUser } = useAuth();
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [showJobModal, setShowJobModal] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+
+  // Filter jobs based on user role, then convert to calendar events
+  const visibleJobs = currentUser?.role === 'employee'
+    ? jobs.filter(job => job.employeeId === currentUser?.id)
+    : currentUser?.role === 'business'
+    ? jobs.filter(job => job.businessId === currentUser?.businessId)
+    : jobs; // Admin sees all
+
+  const calendarEvents = visibleJobs.map(job => ({
+    id: job.id,
+    title: job.title,
+    customer: job.customerId,
+    time: new Date(job.scheduledDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    duration: '2 hours', // Default duration
+    location: 'Customer Location',
+    status: job.status === 'completed' ? 'confirmed' : job.status === 'pending' ? 'pending' : 'confirmed',
+    date: new Date(job.scheduledDate),
+    jobData: job
+  }));
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+
+    const days = [];
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
+    
+    return days;
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setMonth(prev.getMonth() - 1);
+      } else {
+        newDate.setMonth(prev.getMonth() + 1);
+      }
+      return newDate;
+    });
+  };
+
+  const getEventsForDate = (date: Date) => {
+    return calendarEvents.filter(event =>
+      event.date.toDateString() === date.toDateString()
+    );
+  };
+
+  const getWeekDays = (date: Date) => {
+    const week = [];
+    const start = new Date(date);
+    start.setDate(date.getDate() - date.getDay());
+
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(start);
+      day.setDate(start.getDate() + i);
+      week.push(day);
+    }
+    return week;
+  };
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setDate(prev.getDate() + (direction === 'prev' ? -7 : 7));
+      return newDate;
+    });
+  };
+
+  const navigateDay = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setDate(prev.getDate() + (direction === 'prev' ? -1 : 1));
+      return newDate;
+    });
+  };
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  return (
+    <div className="min-h-full bg-gradient-to-br from-slate-50 via-blue-50 to-gray-50 p-6">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
+          <p className="text-gray-600 mt-2">Schedule and manage your appointments</p>
+        </div>
+        <button
+          onClick={() => setShowCreateEvent(true)}
+          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Plus className="w-5 h-5 mr-2" />
+          New Event
+        </button>
+      </div>
+
+      {/* Calendar Header */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => {
+                if (view === 'month') navigateMonth('prev');
+                else if (view === 'week') navigateWeek('prev');
+                else navigateDay('prev');
+              }}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-600" />
+            </button>
+            <h2 className="text-xl font-semibold text-gray-900">
+              {view === 'month' && `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
+              {view === 'week' && `Week of ${monthNames[currentDate.getMonth()]} ${currentDate.getDate()}, ${currentDate.getFullYear()}`}
+              {view === 'day' && `${monthNames[currentDate.getMonth()]} ${currentDate.getDate()}, ${currentDate.getFullYear()}`}
+            </h2>
+            <button
+              onClick={() => {
+                if (view === 'month') navigateMonth('next');
+                else if (view === 'week') navigateWeek('next');
+                else navigateDay('next');
+              }}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            {(['month', 'week', 'day'] as const).map((viewType) => (
+              <button
+                key={viewType}
+                onClick={() => setView(viewType)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  view === viewType
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {viewType.charAt(0).toUpperCase() + viewType.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Calendar Grid - Month View */}
+        {view === 'month' && (
+          <div className="grid grid-cols-7 gap-1">
+            {/* Day headers */}
+            {dayNames.map((day) => (
+              <div key={day} className="p-3 text-center text-sm font-medium text-gray-600 bg-gray-50 rounded-lg">
+                {day}
+              </div>
+            ))}
+
+            {/* Calendar days */}
+            {getDaysInMonth(currentDate).map((date, index) => (
+              <div
+                key={index}
+                className={`min-h-[120px] p-2 border border-gray-100 rounded-lg ${
+                  date ? 'bg-white hover:bg-gray-50' : 'bg-gray-50'
+                } transition-colors`}
+              >
+                {date && (
+                  <>
+                    <div className={`text-sm font-medium mb-2 ${
+                      date.toDateString() === new Date().toDateString()
+                        ? 'text-blue-600'
+                        : 'text-gray-900'
+                    }`}>
+                      {date.getDate()}
+                    </div>
+
+                    {/* Events for this date */}
+                    <div className="space-y-1">
+                      {getEventsForDate(date).map((event) => (
+                        <div
+                          key={event.id}
+                          onClick={() => {
+                            setSelectedJob(event.jobData);
+                            setShowJobModal(true);
+                          }}
+                          className={`p-1 rounded text-xs font-medium truncate cursor-pointer ${
+                            event.status === 'confirmed'
+                              ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                              : event.status === 'pending'
+                              ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                              : 'bg-green-100 text-green-800 hover:bg-green-200'
+                          }`}
+                        >
+                          {event.time} - {event.title}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Calendar Grid - Week View */}
+        {view === 'week' && (
+          <div className="grid grid-cols-7 gap-1">
+            {/* Day headers */}
+            {getWeekDays(currentDate).map((date) => (
+              <div key={date.toISOString()} className="p-3 text-center bg-gray-50 rounded-lg">
+                <div className="text-xs font-medium text-gray-600">{dayNames[date.getDay()]}</div>
+                <div className={`text-lg font-semibold mt-1 ${
+                  date.toDateString() === new Date().toDateString()
+                    ? 'text-blue-600'
+                    : 'text-gray-900'
+                }`}>
+                  {date.getDate()}
+                </div>
+              </div>
+            ))}
+
+            {/* Week days with events */}
+            {getWeekDays(currentDate).map((date) => (
+              <div
+                key={date.toISOString()}
+                className="min-h-[400px] p-2 border border-gray-100 rounded-lg bg-white"
+              >
+                <div className="space-y-2">
+                  {getEventsForDate(date).map((event) => (
+                    <div
+                      key={event.id}
+                      onClick={() => {
+                        setSelectedJob(event.jobData);
+                        setShowJobModal(true);
+                      }}
+                      className={`p-2 rounded text-sm cursor-pointer ${
+                        event.status === 'confirmed'
+                          ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                          : event.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                          : 'bg-green-100 text-green-800 hover:bg-green-200'
+                      }`}
+                    >
+                      <div className="font-medium">{event.time}</div>
+                      <div className="truncate">{event.title}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Calendar Grid - Day View */}
+        {view === 'day' && (
+          <div className="space-y-2">
+            {Array.from({ length: 24 }, (_, hour) => {
+              const timeSlot = `${hour.toString().padStart(2, '0')}:00`;
+              const eventsAtTime = getEventsForDate(currentDate).filter(event =>
+                event.time.startsWith(hour.toString().padStart(2, '0'))
+              );
+
+              return (
+                <div key={hour} className="flex border-b border-gray-100">
+                  <div className="w-20 p-2 text-sm text-gray-600 font-medium">
+                    {timeSlot}
+                  </div>
+                  <div className="flex-1 p-2 min-h-[60px]">
+                    {eventsAtTime.map((event) => (
+                      <div
+                        key={event.id}
+                        onClick={() => {
+                          setSelectedJob(event.jobData);
+                          setShowJobModal(true);
+                        }}
+                        className={`p-3 rounded mb-1 cursor-pointer ${
+                          event.status === 'confirmed'
+                            ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                            : event.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                            : 'bg-green-100 text-green-800 hover:bg-green-200'
+                        }`}
+                      >
+                        <div className="font-medium">{event.title}</div>
+                        <div className="text-sm">{event.time} - {event.customer}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Upcoming Events */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Upcoming Events</h3>
+        <div className="space-y-4">
+          {calendarEvents.slice(0, 5).map((event) => (
+            <div key={event.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                 onClick={() => {
+                   setSelectedJob(event.jobData);
+                   setShowJobModal(true);
+                 }}>
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <CalendarIcon className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-900">{event.title}</h4>
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                    <div className="flex items-center">
+                      <Clock className="w-4 h-4 mr-1" />
+                      {event.time} ({event.duration})
+                    </div>
+                    <div className="flex items-center">
+                      <User className="w-4 h-4 mr-1" />
+                      {event.customer}
+                    </div>
+                    <div className="flex items-center">
+                      <MapPin className="w-4 h-4 mr-1" />
+                      {event.location}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                event.status === 'confirmed'
+                  ? 'bg-green-100 text-green-800'
+                  : event.status === 'pending'
+                  ? 'bg-yellow-100 text-yellow-800'
+                  : 'bg-blue-100 text-blue-800'
+              }`}>
+                {event.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Job Details Modal */}
+      {showJobModal && selectedJob && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-900">Job Details</h3>
+              <div className="flex items-center space-x-2">
+                <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    setShowJobModal(false);
+                    setSelectedJob(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">{selectedJob.title}</h4>
+                <p className="text-gray-600">{selectedJob.description}</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Job ID</label>
+                  <p className="text-gray-900 font-mono">{selectedJob.id}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    selectedJob.status === 'completed' ? 'bg-green-100 text-green-800' :
+                    selectedJob.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                    selectedJob.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>
+                    {selectedJob.status.replace('-', ' ')}
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
+                  <p className="text-gray-900">{selectedJob.customerId}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date</label>
+                  <p className="text-gray-900">{new Date(selectedJob.scheduledDate).toLocaleString()}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+                  <p className="text-gray-900">{users.find(u => u.id === selectedJob.employeeId)?.name || 'Unassigned'}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Quotation</label>
+                  <p className="text-gray-900">${selectedJob.quotation?.toLocaleString() || 'N/A'}</p>
+                </div>
+              </div>
+
+              {selectedJob.notes && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
+                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{selectedJob.notes}</p>
+                </div>
+              )}
+
+              {selectedJob.checklist && selectedJob.checklist.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Checklist</label>
+                  <div className="space-y-2">
+                    {selectedJob.checklist.map((item: any) => (
+                      <div key={item.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={item.completed}
+                          readOnly
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span className={`text-sm ${item.completed ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
+                          {item.text}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">Appointment Actions</h4>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => {
+                    setShowJobModal(false);
+                    setShowRescheduleModal(true);
+                    setRescheduleDate(selectedJob.scheduledDate.split('T')[0]);
+                    setRescheduleTime(selectedJob.scheduledTime || '09:00');
+                  }}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                >
+                  Reschedule
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm('Postpone this appointment by 1 day?')) {
+                      const newDate = new Date(selectedJob.scheduledDate);
+                      newDate.setDate(newDate.getDate() + 1);
+                      updateJob(selectedJob.id, {
+                        scheduledDate: newDate.toISOString(),
+                        status: 'pending',
+                        jobHistory: [...selectedJob.jobHistory, {
+                          id: `history-${Date.now()}`,
+                          timestamp: new Date().toISOString(),
+                          action: 'postponed',
+                          description: 'Appointment postponed by 1 day',
+                          userId: currentUser?.id || '',
+                          userName: currentUser?.name || ''
+                        }]
+                      });
+                      alert('Appointment postponed by 1 day');
+                      setShowJobModal(false);
+                      setSelectedJob(null);
+                    }
+                  }}
+                  className="px-3 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm"
+                >
+                  Postpone
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirm('Are you sure you want to cancel this appointment?')) {
+                      updateJob(selectedJob.id, {
+                        status: 'cancelled',
+                        jobHistory: [...selectedJob.jobHistory, {
+                          id: `history-${Date.now()}`,
+                          timestamp: new Date().toISOString(),
+                          action: 'cancelled',
+                          description: 'Appointment cancelled',
+                          userId: currentUser?.id || '',
+                          userName: currentUser?.name || ''
+                        }]
+                      });
+                      alert('Appointment cancelled');
+                      setShowJobModal(false);
+                      setSelectedJob(null);
+                    }
+                  }}
+                  className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowJobModal(false);
+                  setSelectedJob(null);
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Event Modal */}
+      {showCreateEvent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-900">Create New Event</h3>
+              <button
+                onClick={() => {
+                  setShowCreateEvent(false);
+                  setNewEventTitle('');
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                alert(`Event "${newEventTitle}" would be created`);
+                setShowCreateEvent(false);
+                setNewEventTitle('');
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Event Title</label>
+                <input
+                  type="text"
+                  value={newEventTitle}
+                  onChange={(e) => setNewEventTitle(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter event title"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date & Time</label>
+                <input
+                  type="datetime-local"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateEvent(false);
+                    setNewEventTitle('');
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Create Event
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reschedule Modal */}
+      {showRescheduleModal && selectedJob && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-900">Reschedule Appointment</h3>
+              <button
+                onClick={() => {
+                  setShowRescheduleModal(false);
+                  setShowJobModal(true);
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                updateJob(selectedJob.id, {
+                  scheduledDate: new Date(rescheduleDate).toISOString(),
+                  scheduledTime: rescheduleTime,
+                  status: 'pending',
+                  jobHistory: [...selectedJob.jobHistory, {
+                    id: `history-${Date.now()}`,
+                    timestamp: new Date().toISOString(),
+                    action: 'rescheduled',
+                    description: `Appointment rescheduled to ${rescheduleDate} at ${rescheduleTime}`,
+                    userId: currentUser?.id || '',
+                    userName: currentUser?.name || ''
+                  }]
+                });
+                alert('Appointment rescheduled successfully!');
+                setShowRescheduleModal(false);
+                setSelectedJob(null);
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">New Date</label>
+                <input
+                  type="date"
+                  value={rescheduleDate}
+                  onChange={(e) => setRescheduleDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">New Time</label>
+                <input
+                  type="time"
+                  value={rescheduleTime}
+                  onChange={(e) => setRescheduleTime(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRescheduleModal(false);
+                    setShowJobModal(true);
+                  }}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Reschedule
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
