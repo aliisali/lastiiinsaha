@@ -13,8 +13,8 @@ export function FinalPaymentStep({ job, onComplete }: FinalPaymentStepProps) {
   const [cashReceived, setCashReceived] = useState('');
   const [processing, setProcessing] = useState(false);
 
-  const quotation = parseFloat(job.quotation || '0');
-  const deposit = parseFloat(job.deposit || '0');
+  const quotation = typeof job.quotation === 'number' ? job.quotation : parseFloat(String(job.quotation || '0'));
+  const deposit = typeof job.deposit === 'number' ? job.deposit : parseFloat(String(job.deposit || '0'));
   const balanceDue = quotation - deposit;
 
   const handlePayment = async () => {
@@ -148,7 +148,7 @@ export function FinalPaymentStep({ job, onComplete }: FinalPaymentStepProps) {
               <div className="mt-4 space-y-3">
                 <div className="bg-white border border-blue-200 rounded-lg p-3 text-sm space-y-1">
                   <p><strong>Bank:</strong> Example Bank</p>
-                  <p><strong>Account Name:</strong> {job.business?.name || 'Business Name'}</p>
+                  <p><strong>Account Name:</strong> Business Name</p>
                   <p><strong>Account Number:</strong> 1234-5678-9012</p>
                   <p><strong>Amount:</strong> ${balanceDue.toFixed(2)}</p>
                 </div>

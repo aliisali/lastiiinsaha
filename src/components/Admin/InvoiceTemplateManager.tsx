@@ -24,7 +24,7 @@ export function InvoiceTemplateManager() {
       const { data, error } = await supabase
         .from('invoice_templates')
         .select('*')
-        .eq('business_id', user?.business_id)
+        .eq('business_id', user?.businessId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -47,7 +47,7 @@ export function InvoiceTemplateManager() {
       const { error } = await supabase
         .from('invoice_templates')
         .insert({
-          business_id: user?.business_id,
+          business_id: user?.businessId,
           name: formData.name,
           content: formData.content,
           template_type: formData.template_type,

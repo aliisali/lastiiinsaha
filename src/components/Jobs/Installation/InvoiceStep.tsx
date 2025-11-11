@@ -23,7 +23,7 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
       const { data, error } = await supabase
         .from('invoice_templates')
         .select('*')
-        .eq('business_id', job.business_id)
+        .eq('business_id', job.businessId)
         .eq('is_active', true);
 
       if (error) throw error;
@@ -51,15 +51,15 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
   };
 
   const generateInvoice = () => {
-    const quotation = parseFloat(job.quotation || '0');
-    const deposit = parseFloat(job.deposit || '0');
+    const quotation = parseFloat(String(job.quotation || '0'));
+    const deposit = parseFloat(String(job.deposit || '0'));
     const balance = quotation - deposit;
 
     return {
       invoiceNumber: `INV-${job.id}-${Date.now()}`,
       date: new Date().toLocaleDateString(),
-      customer: job.customer,
-      items: job.products || [],
+      customer: null,
+      items: job.selectedProducts || [],
       measurements: job.measurements || [],
       subtotal: quotation,
       deposit: deposit,
@@ -119,18 +119,18 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
             <p className="text-sm text-gray-500">Date: {invoice.date}</p>
           </div>
           <div className="text-right">
-            <p className="font-semibold text-gray-900">{job.business?.name || 'Business Name'}</p>
-            <p className="text-sm text-gray-600">{job.business?.address || ''}</p>
-            <p className="text-sm text-gray-600">{job.business?.phone || ''}</p>
+            <p className="font-semibold text-gray-900">Business Name</p>
+            <p className="text-sm text-gray-600">Business Address</p>
+            <p className="text-sm text-gray-600">Business Phone</p>
           </div>
         </div>
 
         <div className="border-t border-b border-gray-200 py-4 mb-6">
           <p className="text-sm text-gray-600 mb-1">Bill To:</p>
-          <p className="font-semibold text-gray-900">{invoice.customer?.name}</p>
-          <p className="text-sm text-gray-600">{invoice.customer?.address}</p>
-          <p className="text-sm text-gray-600">{invoice.customer?.phone}</p>
-          <p className="text-sm text-gray-600">{invoice.customer?.email}</p>
+          <p className="font-semibold text-gray-900">Customer Name</p>
+          <p className="text-sm text-gray-600">Customer Address</p>
+          <p className="text-sm text-gray-600">Customer Phone</p>
+          <p className="text-sm text-gray-600">Customer Email</p>
         </div>
 
         <table className="w-full mb-6">

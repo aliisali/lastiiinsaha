@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, Package, AlertCircle } from 'lucide-react';
-import { Job } from '../../../types';
+import { Job, Customer, Business } from '../../../types';
+import { supabase } from '../../../lib/supabase';
 
 interface OrderConfirmationStepProps {
   job: Job;
@@ -9,6 +10,29 @@ interface OrderConfirmationStepProps {
 
 export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepProps) {
   const [confirmed, setConfirmed] = useState(false);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [business, setBusiness] = useState<Business | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [customerRes, businessRes] = await Promise.all([
+        supabase.from('customers').select('*').eq('id', job.customerId).single(),
+        supabase.from('businesses').select('*').eq('id', job.businessId).single()
+      ]);
+
+      if (customerRes.data) setCustomer(customerRes.data);
+      if (businessRes.data) setBusiness(businessRes.data);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleConfirm = () => {
     if (!confirmed) {
@@ -24,7 +48,15 @@ export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepP
   };
 
   const measurements = job.measurements || [];
-  const products = job.products || [];
+  const products = job.selectedProducts || [];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
@@ -52,15 +84,15 @@ export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepP
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600">Name</p>
-              <p className="font-semibold text-gray-900">{job.customer?.name || 'N/A'}</p>
+              <p className="font-semibold text-gray-900">{customer?.name || 'N/A'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Phone</p>
-              <p className="font-semibold text-gray-900">{job.customer?.phone || 'N/A'}</p>
+              <p className="font-semibold text-gray-900">{customer?.phone || 'N/A'}</p>
             </div>
             <div className="md:col-span-2">
               <p className="text-sm text-gray-600">Address</p>
-              <p className="font-semibold text-gray-900">{job.customer?.address || 'N/A'}</p>
+              <p className="font-semibold text-gray-900">{customer?.address || 'N/A'}</p>
             </div>
           </div>
         </div>
@@ -132,13 +164,13 @@ export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepP
             <div className="flex justify-between">
               <span className="text-gray-600">Deposit Paid</span>
               <span className="font-semibold text-green-600">
-                {job.deposit_paid ? `$${job.deposit || '0.00'}` : 'Not Paid'}
+                {job.depositPaid ? `$${job.deposit || '0.00'}` : 'Not Paid'}
               </span>
             </div>
             <div className="flex justify-between pt-2 border-t border-gray-200">
               <span className="font-semibold text-gray-900">Balance Due</span>
               <span className="font-bold text-blue-600">
-                ${(parseFloat(job.quotation || '0') - parseFloat(job.deposit || '0')).toFixed(2)}
+                ${(parseFloat(String(job.quotation || '0')) - parseFloat(String(job.deposit || '0'))).toFixed(2)}
               </span>
             </div>
           </div>

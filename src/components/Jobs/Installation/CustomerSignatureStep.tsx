@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { CheckCircle, RotateCcw, PenTool } from 'lucide-react';
-import { Job } from '../../../types';
+import { Job, Customer } from '../../../types';
+import { supabase } from '../../../lib/supabase';
 
 interface CustomerSignatureStepProps {
   job: Job;
@@ -11,8 +12,30 @@ export function CustomerSignatureStep({ job, onComplete }: CustomerSignatureStep
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
-  const [customerName, setCustomerName] = useState(job.customer?.name || '');
+  const [customerName, setCustomerName] = useState('');
   const [satisfied, setSatisfied] = useState(false);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+
+  useEffect(() => {
+    loadCustomer();
+  }, []);
+
+  const loadCustomer = async () => {
+    try {
+      const { data } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', job.customerId)
+        .single();
+
+      if (data) {
+        setCustomer(data);
+        setCustomerName(data.name || '');
+      }
+    } catch (error) {
+      console.error('Error loading customer:', error);
+    }
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
