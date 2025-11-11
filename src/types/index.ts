@@ -93,6 +93,7 @@ export interface JobMeasurement {
   location: string;
   controlType?: 'chain-cord' | 'wand' | 'none';
   bracketType?: 'top-fix' | 'face-fix';
+  photos?: string[];
   createdAt: string;
 }
 

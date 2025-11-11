@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Play, Pause, CheckCircle, Camera, FileText, CreditCard, Ligature as Signature, Clock, ArrowRight, X, Calendar } from 'lucide-react';
 import { Job } from '../../types';
 import { ProductSelection } from './ProductSelection';
-import { MeasurementScreen } from './MeasurementScreen';
+import { EnhancedMeasurementScreen } from './EnhancedMeasurementScreen';
 import { QuotationScreen } from './QuotationScreen';
 import { PaymentScreen } from './PaymentScreen';
 import { SignatureCapture } from './SignatureCapture';
@@ -18,7 +18,7 @@ interface JobWorkflowProps {
 
 export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
   const { user } = useAuth();
-  const { customers, addNotification } = useData();
+  const { customers, addNotification, addJob } = useData();
   const [currentStep, setCurrentStep] = useState<'start' | 'products' | 'measurements' | 'quotation' | 'payment' | 'signature' | 'complete' | 'convert-to-installation'>('start');
   const [jobStartTime, setJobStartTime] = useState<string | null>(null);
   const [showConversionSuccess, setShowConversionSuccess] = useState(false);
@@ -74,25 +74,65 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
     setCurrentStep('products');
   };
 
-  const handleConvertToInstallation = () => {
-    // Convert measurement job to installation job (same job, just change type)
-    onUpdateJob({
-      jobType: 'installation',
-      employeeId: null, // Unassign so business can reassign
-      status: 'pending', // Reset to pending for assignment
-      scheduledDate: '', // Needs new scheduling
-      jobHistory: [...job.jobHistory, {
-        id: `history-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        action: 'converted_to_installation',
-        description: 'Measurement completed - Job converted to installation',
-        userId: user?.id || '',
-        userName: user?.name || ''
-      }]
-    });
+  const handleConvertToInstallation = async () => {
+    // Create a NEW installation job as a copy of the measurement job
+    // Keep the original measurement job intact and completed
 
-    setShowConversionSuccess(true);
-    setCurrentStep('complete');
+    try {
+      // First, mark the measurement job as completed
+      onUpdateJob({
+        status: 'completed',
+        completedDate: new Date().toISOString(),
+        jobHistory: [...job.jobHistory, {
+          id: `history-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          action: 'measurement_completed',
+          description: 'Measurement job completed - Creating installation job',
+          userId: user?.id || '',
+          userName: user?.name || ''
+        }]
+      });
+
+      // Create new installation job with all measurement data
+      const newInstallationJob = {
+        title: `Installation - ${job.title}`,
+        description: `Installation job created from measurement job #${job.id}`,
+        jobType: 'installation' as const,
+        customerId: job.customerId,
+        businessId: job.businessId,
+        employeeId: null, // Unassigned, business will assign
+        scheduledDate: '', // Business will schedule
+        scheduledTime: '09:00',
+        status: 'pending' as const,
+        // Copy all measurement data
+        measurements: job.measurements,
+        selectedProducts: job.selectedProducts,
+        quotation: job.quotation,
+        deposit: job.deposit,
+        depositPaid: job.depositPaid,
+        images: job.images,
+        documents: job.documents,
+        checklist: [],
+        parentJobId: job.id, // Link to parent measurement job
+        jobHistory: [{
+          id: `history-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          action: 'installation_job_created',
+          description: `Created from measurement job #${job.id}`,
+          userId: user?.id || '',
+          userName: user?.name || '',
+          data: { parentJobId: job.id }
+        }]
+      };
+
+      await addJob(newInstallationJob);
+
+      setShowConversionSuccess(true);
+      setCurrentStep('complete');
+    } catch (error) {
+      console.error('Error creating installation job:', error);
+      alert('Failed to create installation job. Please try again.');
+    }
   };
 
   const handleStepComplete = (stepData: any) => {
@@ -181,9 +221,17 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
 
       case 'measurements':
         return (
-          <MeasurementScreen
+          <EnhancedMeasurementScreen
             job={job}
-            onComplete={handleStepComplete}
+            onComplete={(data) => {
+              // Save measurements to current job
+              handleStepComplete({ measurements: data.measurements });
+
+              // If auto-convert is enabled, create installation job
+              if (data.convertToInstallation) {
+                setCurrentStep('convert-to-installation');
+              }
+            }}
           />
         );
 
@@ -252,22 +300,23 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
               <Calendar className="w-10 h-10 text-blue-600" />
             </div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              Measurement Complete! Convert to Installation?
+              Measurement Complete! Create Installation Job?
             </h2>
             <p className="text-gray-600 mb-2">
               The measurement has been completed successfully.
             </p>
             <p className="text-gray-600 mb-6">
-              This job will be converted to an installation job.
+              A new installation job will be created with all measurement data.
             </p>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 max-w-md mx-auto">
               <h3 className="font-semibold text-gray-900 mb-2">What happens next:</h3>
               <ul className="text-sm text-gray-700 space-y-1 text-left">
-                <li>• Same job converts to installation type</li>
-                <li>• Keeps all measurements & products</li>
-                <li>• Returns to your business (unassigned)</li>
-                <li>• Business user will reassign & schedule</li>
+                <li>• Measurement job stays completed ✓</li>
+                <li>• NEW installation job created automatically</li>
+                <li>• Installation job has ALL measurements & photos</li>
+                <li>• Installation job will be unassigned</li>
+                <li>• Business user will assign & schedule installation</li>
               </ul>
             </div>
 
@@ -292,7 +341,7 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center"
               >
                 <Calendar className="w-5 h-5 mr-2" />
-                Convert to Installation
+                Create Installation Job
               </button>
             </div>
           </div>
@@ -305,16 +354,16 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
               <CheckCircle className="w-10 h-10 text-green-600" />
             </div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              {showConversionSuccess ? 'Converted to Installation!' : `${job.jobType === 'measurement' ? 'Measurement' : 'Installation'} Complete!`}
+              {showConversionSuccess ? 'Installation Job Created!' : `${job.jobType === 'measurement' ? 'Measurement' : 'Installation'} Complete!`}
             </h2>
             <p className="text-gray-600 mb-2">
               {showConversionSuccess
-                ? 'The job has been converted to installation type.'
+                ? 'A new installation job has been created with all measurement data.'
                 : 'Job has been completed successfully.'}
             </p>
             {showConversionSuccess && (
               <p className="text-blue-600 font-semibold mb-4">
-                ✓ Job is now unassigned and waiting for business to reassign!
+                ✓ Installation job is waiting for business to assign and schedule!
               </p>
             )}
             <button
