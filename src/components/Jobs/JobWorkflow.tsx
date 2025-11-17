@@ -6,6 +6,7 @@ import { EnhancedMeasurementScreen } from './EnhancedMeasurementScreen';
 import { QuotationScreen } from './QuotationScreen';
 import { PaymentScreen } from './PaymentScreen';
 import { SignatureCapture } from './SignatureCapture';
+import { InvoiceScreen } from './InvoiceScreen';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { EmailService } from '../../services/EmailService';
@@ -19,7 +20,7 @@ interface JobWorkflowProps {
 export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
   const { user } = useAuth();
   const { customers, addNotification, addJob } = useData();
-  const [currentStep, setCurrentStep] = useState<'start' | 'products' | 'measurements' | 'quotation' | 'payment' | 'signature' | 'complete' | 'convert-to-installation'>('start');
+  const [currentStep, setCurrentStep] = useState<'start' | 'products' | 'measurements' | 'quotation' | 'payment' | 'signature' | 'invoice' | 'complete' | 'convert-to-installation'>('start');
   const [jobStartTime, setJobStartTime] = useState<string | null>(null);
   const [showConversionSuccess, setShowConversionSuccess] = useState(false);
 
@@ -162,7 +163,16 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
         }
         break;
       case 'measurements':
-        setCurrentStep('quotation');
+        // For measurement jobs, go directly to invoice
+        setCurrentStep('invoice');
+        break;
+      case 'invoice':
+        // After invoice, show conversion option for measurement jobs
+        if (job.jobType === 'measurement') {
+          setCurrentStep('convert-to-installation');
+        } else {
+          setCurrentStep('complete');
+        }
         break;
       case 'quotation':
         setCurrentStep('payment');
@@ -274,6 +284,14 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
               });
               onClose();
             }}
+          />
+        );
+
+      case 'invoice':
+        return (
+          <InvoiceScreen
+            job={job}
+            onComplete={handleStepComplete}
           />
         );
 
