@@ -396,6 +396,9 @@ export class DatabaseService {
       if (!jobData.scheduledDate) {
         throw new Error('Scheduled date is required');
       }
+      if (!jobData.jobType) {
+        console.warn('⚠️ Job type not provided, defaulting to "measurement"');
+      }
 
       // Format the scheduled date to include time
       const scheduledDateTime = jobData.scheduledDate + ' ' + (jobData.scheduledTime || '09:00');
@@ -404,6 +407,7 @@ export class DatabaseService {
       const insertData = {
         title: jobData.title,
         description: jobData.description || '',
+        job_type: jobData.jobType || 'measurement',
         status: jobData.status || 'pending',
         customer_id: jobData.customerId,
         employee_id: jobData.employeeId || null,
@@ -440,7 +444,7 @@ export class DatabaseService {
         id: data.id,
         title: data.title,
         description: data.description || '',
-        jobType: jobData.jobType || 'measurement',
+        jobType: data.job_type || 'measurement',
         status: data.status,
         customerId: data.customer_id,
         employeeId: data.employee_id || null,
