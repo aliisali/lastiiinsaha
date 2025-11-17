@@ -131,6 +131,39 @@ const DEFAULT_CUSTOMERS: Customer[] = [
     postcode: '54321',
     businessId: '550e8400-e29b-41d4-a716-446655440001',
     createdAt: '2024-01-01T00:00:00Z'
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440020',
+    name: 'Margaret Thompson',
+    email: 'margaret.t@email.com',
+    phone: '+44 20 7890 1234',
+    mobile: '+44 7700 900001',
+    address: '45 Oak Avenue, Kensington, London',
+    postcode: 'SW7 3AB',
+    businessId: '550e8400-e29b-41d4-a716-446655440001',
+    createdAt: '2024-01-01T00:00:00Z'
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440021',
+    name: 'James Anderson',
+    email: 'james.a@email.com',
+    phone: '+44 20 7890 1235',
+    mobile: '+44 7700 900002',
+    address: '78 Maple Drive, Chelsea, London',
+    postcode: 'SW3 5CD',
+    businessId: '550e8400-e29b-41d4-a716-446655440001',
+    createdAt: '2024-01-01T00:00:00Z'
+  },
+  {
+    id: '550e8400-e29b-41d4-a716-446655440022',
+    name: 'Patricia Wilson',
+    email: 'patricia.w@email.com',
+    phone: '+44 20 7890 1236',
+    mobile: '+44 7700 900003',
+    address: '12 Birch Lane, Mayfair, London',
+    postcode: 'W1K 6EF',
+    businessId: '550e8400-e29b-41d4-a716-446655440001',
+    createdAt: '2024-01-01T00:00:00Z'
   }
 ];
 
@@ -204,6 +237,8 @@ const DEFAULT_JOBS: Job[] = [
       { id: '3', text: 'Professional installation', completed: true },
       { id: '4', text: 'Quality check & demo', completed: true }
     ],
+    measurements: [],
+    selectedProducts: [],
     jobHistory: [],
     createdAt: '2024-01-15T09:00:00Z'
   },
@@ -227,8 +262,132 @@ const DEFAULT_JOBS: Job[] = [
       { id: '3', text: 'Motor installation', completed: false },
       { id: '4', text: 'App setup and testing', completed: false }
     ],
+    measurements: [],
+    selectedProducts: [],
     jobHistory: [],
     createdAt: '2024-01-15T09:00:00Z'
+  },
+  {
+    id: 'JOB-M001',
+    title: 'Master Bedroom Blinds Measurement',
+    description: 'Measure windows for blackout blinds in master bedroom',
+    jobType: 'measurement',
+    status: 'completed',
+    customerId: '550e8400-e29b-41d4-a716-446655440020',
+    employeeId: '550e8400-e29b-41d4-a716-446655440005',
+    businessId: '550e8400-e29b-41d4-a716-446655440001',
+    scheduledDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    scheduledTime: '10:00',
+    completedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    quotation: 850,
+    images: [],
+    documents: [],
+    checklist: [
+      { id: '1', text: 'Customer consultation', completed: true },
+      { id: '2', text: 'Window measurements', completed: true },
+      { id: '3', text: 'Product selection', completed: true },
+      { id: '4', text: 'Quotation preparation', completed: true },
+      { id: '5', text: 'Customer approval', completed: true }
+    ],
+    measurements: [
+      { id: 'W1', windowId: 'W1', width: 120, height: 150, location: 'Master Bedroom - Main Window', notes: 'South facing, needs blackout', createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() },
+      { id: 'W2', windowId: 'W2', width: 90, height: 150, location: 'Master Bedroom - Side Window', notes: '', createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() }
+    ],
+    selectedProducts: [],
+    jobHistory: [
+      { id: 'h1', timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), action: 'job_created', description: 'Measurement job created', userId: '550e8400-e29b-41d4-a716-446655440004', userName: 'Business Manager' },
+      { id: 'h2', timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), action: 'measurements_completed', description: 'All measurements taken', userId: '550e8400-e29b-41d4-a716-446655440005', userName: 'Installation Specialist' },
+      { id: 'h3', timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), action: 'job_completed', description: 'Customer approved quotation', userId: '550e8400-e29b-41d4-a716-446655440005', userName: 'Installation Specialist' }
+    ],
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'JOB-M002',
+    title: 'Living Room & Dining Area Measurement',
+    description: 'Measure for roller blinds in open-plan living space',
+    jobType: 'measurement',
+    status: 'in-progress',
+    customerId: '550e8400-e29b-41d4-a716-446655440021',
+    employeeId: '550e8400-e29b-41d4-a716-446655440005',
+    businessId: '550e8400-e29b-41d4-a716-446655440001',
+    scheduledDate: new Date().toISOString(),
+    scheduledTime: '14:00',
+    quotation: 0,
+    images: [],
+    documents: [],
+    checklist: [
+      { id: '1', text: 'Customer consultation', completed: true },
+      { id: '2', text: 'Window measurements', completed: true },
+      { id: '3', text: 'Product selection', completed: false },
+      { id: '4', text: 'Quotation preparation', completed: false },
+      { id: '5', text: 'Customer approval', completed: false }
+    ],
+    measurements: [
+      { id: 'W1', windowId: 'W1', width: 200, height: 180, location: 'Living Room - Front Window', notes: 'Triple window, need 3 blinds', createdAt: new Date().toISOString() },
+      { id: 'W2', windowId: 'W2', width: 140, height: 180, location: 'Dining Area Window', notes: 'Adjacent to kitchen', createdAt: new Date().toISOString() }
+    ],
+    selectedProducts: [],
+    jobHistory: [
+      { id: 'h1', timestamp: new Date().toISOString(), action: 'job_created', description: 'Measurement job created', userId: '550e8400-e29b-41d4-a716-446655440004', userName: 'Business Manager' },
+      { id: 'h2', timestamp: new Date().toISOString(), action: 'job_started', description: 'Started measurements', userId: '550e8400-e29b-41d4-a716-446655440005', userName: 'Installation Specialist' }
+    ],
+    createdAt: new Date().toISOString()
+  },
+  {
+    id: 'JOB-M003',
+    title: 'Conservatory Roof Blinds Measurement',
+    description: 'Measure roof panels for pleated conservatory blinds',
+    jobType: 'measurement',
+    status: 'confirmed',
+    customerId: '550e8400-e29b-41d4-a716-446655440022',
+    employeeId: '550e8400-e29b-41d4-a716-446655440005',
+    businessId: '550e8400-e29b-41d4-a716-446655440001',
+    scheduledDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+    scheduledTime: '09:30',
+    quotation: 0,
+    images: [],
+    documents: [],
+    checklist: [
+      { id: '1', text: 'Customer consultation', completed: false },
+      { id: '2', text: 'Window measurements', completed: false },
+      { id: '3', text: 'Product selection', completed: false },
+      { id: '4', text: 'Quotation preparation', completed: false },
+      { id: '5', text: 'Customer approval', completed: false }
+    ],
+    measurements: [],
+    selectedProducts: [],
+    jobHistory: [
+      { id: 'h1', timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), action: 'job_created', description: 'Measurement job created', userId: '550e8400-e29b-41d4-a716-446655440004', userName: 'Business Manager' }
+    ],
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'JOB-M004',
+    title: 'Home Office Window Measurement',
+    description: 'Quick measurement for single office window',
+    jobType: 'measurement',
+    status: 'pending',
+    customerId: '550e8400-e29b-41d4-a716-446655440020',
+    employeeId: null,
+    businessId: '550e8400-e29b-41d4-a716-446655440001',
+    scheduledDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    scheduledTime: '11:00',
+    quotation: 0,
+    images: [],
+    documents: [],
+    checklist: [
+      { id: '1', text: 'Customer consultation', completed: false },
+      { id: '2', text: 'Window measurements', completed: false },
+      { id: '3', text: 'Product selection', completed: false },
+      { id: '4', text: 'Quotation preparation', completed: false },
+      { id: '5', text: 'Customer approval', completed: false }
+    ],
+    measurements: [],
+    selectedProducts: [],
+    jobHistory: [
+      { id: 'h1', timestamp: new Date().toISOString(), action: 'job_created', description: 'Measurement job created', userId: '550e8400-e29b-41d4-a716-446655440004', userName: 'Business Manager' }
+    ],
+    createdAt: new Date().toISOString()
   }
 ];
 
