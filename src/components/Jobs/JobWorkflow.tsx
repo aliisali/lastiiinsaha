@@ -101,17 +101,23 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
         }]
       });
 
+      // Calculate a default installation date (7 days from measurement date)
+      const measurementDate = new Date(job.scheduledDate);
+      const defaultInstallationDate = new Date(measurementDate);
+      defaultInstallationDate.setDate(defaultInstallationDate.getDate() + 7);
+      const installationDateString = defaultInstallationDate.toISOString().split('T')[0];
+
       // Create new installation job with all measurement data
       const newInstallationJob = {
         title: `Installation - ${job.title}`,
-        description: `Installation job created from measurement job #${job.id}`,
+        description: `Installation job created from measurement job #${job.id}. Schedule pending confirmation.`,
         jobType: 'installation' as const,
         customerId: job.customerId,
         businessId: job.businessId,
         employeeId: null, // Unassigned, business will assign
-        scheduledDate: '', // Business will schedule
+        scheduledDate: installationDateString, // Set to 7 days after measurement
         scheduledTime: '09:00',
-        status: 'pending' as const,
+        status: 'tbd' as const, // Use TBD status to indicate scheduling is pending
         // Copy all measurement data
         measurements: job.measurements,
         selectedProducts: job.selectedProducts,
@@ -132,10 +138,10 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
           id: `history-${Date.now()}`,
           timestamp: new Date().toISOString(),
           action: 'installation_job_created',
-          description: `Created from measurement job #${job.id}`,
+          description: `Created from measurement job #${job.id}. Initial schedule set to ${installationDateString} (7 days after measurement). Awaiting business confirmation.`,
           userId: user?.id || '',
           userName: user?.name || '',
-          data: { parentJobId: job.id }
+          data: { parentJobId: job.id, suggestedDate: installationDateString }
         }]
       };
 
@@ -350,6 +356,11 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
         );
 
       case 'convert-to-installation':
+        const measurementDate = new Date(job.scheduledDate);
+        const suggestedInstallDate = new Date(measurementDate);
+        suggestedInstallDate.setDate(suggestedInstallDate.getDate() + 7);
+        const suggestedDateString = suggestedInstallDate.toLocaleDateString();
+
         return (
           <div className="text-center py-12">
             <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -371,8 +382,9 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
                 <li>• Measurement job stays completed ✓</li>
                 <li>• NEW installation job created automatically</li>
                 <li>• Installation job has ALL measurements & photos</li>
-                <li>• Installation job will be unassigned</li>
-                <li>• Business user will assign & schedule installation</li>
+                <li>• Suggested date: {suggestedDateString} (7 days from measurement)</li>
+                <li>• Status: TBD - needs business confirmation</li>
+                <li>• Business user can reassign & reschedule as needed</li>
               </ul>
             </div>
 
