@@ -265,17 +265,34 @@ export function JobManagement() {
           <div key={job.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-3">
+                <div className="flex items-center space-x-3 mb-3 flex-wrap gap-2">
                   {getStatusIcon(job.status)}
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
-                    <span className="text-sm text-blue-600 font-medium">
-                      {job.jobType === 'measurement' && '📏 Measurement Job'}
-                      {job.jobType === 'installation' && '🔧 Installation Job'}
-                      {job.jobType === 'task' && '📋 Task'}
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap mt-1">
+                      {job.jobType === 'measurement' && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                          📏 Measurement
+                        </span>
+                      )}
+                      {job.jobType === 'installation' && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                          🔧 Installation
+                        </span>
+                      )}
+                      {job.jobType === 'task' && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">
+                          📋 Task
+                        </span>
+                      )}
+                      {job.parentJobId && (
+                        <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
+                          🔗 Created from Measurement
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(job.status)}`}>
+                  <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(job.status)}`}>
                     {job.status.replace('-', ' ')}
                   </span>
                 </div>
@@ -549,6 +566,22 @@ export function JobManagement() {
                   </div>
                 )}
               </div>
+
+              {/* Job Type & Parent Info */}
+              {selectedJob.parentJobId && (
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                  <h4 className="font-semibold text-orange-900 mb-2">Installation Job Info</h4>
+                  <p className="text-sm text-orange-800">
+                    This installation job was created from measurement job:
+                  </p>
+                  <p className="font-mono text-orange-900 font-semibold mt-1">
+                    #{selectedJob.parentJobId}
+                  </p>
+                  <p className="text-xs text-orange-700 mt-2">
+                    All measurements, products, and photos were copied from the original measurement job.
+                  </p>
+                </div>
+              )}
 
               {/* Customer Info */}
               <div className="bg-green-50 p-4 rounded-lg">

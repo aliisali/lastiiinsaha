@@ -248,6 +248,32 @@ export function EnhancedMeasurementScreen({ job, onComplete }: EnhancedMeasureme
         <p className="text-gray-600">Take accurate measurements for each window with photos</p>
       </div>
 
+      {/* Selected Products Reference */}
+      {job.selectedProducts && job.selectedProducts.length > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <h4 className="font-semibold text-green-900 mb-3 flex items-center">
+            <CheckCircle className="w-5 h-5 mr-2" />
+            Selected Products for Installation
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {job.selectedProducts.map((product) => (
+              <div key={product.id} className="bg-white rounded-lg p-3 border border-green-200">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium text-gray-900">{product.productName}</p>
+                    <p className="text-sm text-gray-600">Qty: {product.quantity}</p>
+                  </div>
+                  <p className="font-semibold text-green-600">${(product.price * product.quantity).toFixed(2)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-gray-600 mt-3 text-center">
+            Take measurements for {job.selectedProducts.reduce((sum, p) => sum + p.quantity, 0)} window{job.selectedProducts.reduce((sum, p) => sum + p.quantity, 0) !== 1 ? 's' : ''}
+          </p>
+        </div>
+      )}
+
       {/* Add/Edit Measurement */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">

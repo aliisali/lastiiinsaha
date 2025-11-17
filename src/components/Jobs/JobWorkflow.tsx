@@ -7,6 +7,7 @@ import { QuotationScreen } from './QuotationScreen';
 import { PaymentScreen } from './PaymentScreen';
 import { SignatureCapture } from './SignatureCapture';
 import { InvoiceScreen } from './InvoiceScreen';
+import { InstallationJobScreen } from './InstallationJobScreen';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { EmailService } from '../../services/EmailService';
@@ -20,7 +21,7 @@ interface JobWorkflowProps {
 export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
   const { user } = useAuth();
   const { customers, addNotification, addJob } = useData();
-  const [currentStep, setCurrentStep] = useState<'start' | 'products' | 'measurements' | 'quotation' | 'payment' | 'signature' | 'invoice' | 'complete' | 'convert-to-installation'>('start');
+  const [currentStep, setCurrentStep] = useState<'start' | 'products' | 'measurements' | 'quotation' | 'payment' | 'signature' | 'invoice' | 'complete' | 'convert-to-installation' | 'installation-workflow'>('start');
   const [jobStartTime, setJobStartTime] = useState<string | null>(null);
   const [showConversionSuccess, setShowConversionSuccess] = useState(false);
 
@@ -62,8 +63,8 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
       timestamp: startTime,
       action: 'job_started',
       description: `${job.jobType} job started`,
-      userId: 'current-user-id',
-      userName: 'Current User'
+      userId: user?.id || 'current-user-id',
+      userName: user?.name || 'Current User'
     };
 
     onUpdateJob({
@@ -72,7 +73,13 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
       jobHistory: [...job.jobHistory, historyEntry]
     });
 
-    setCurrentStep('products');
+    // For installation jobs, go directly to installation workflow
+    // For measurement jobs, start with product selection
+    if (job.jobType === 'installation') {
+      setCurrentStep('installation-workflow');
+    } else {
+      setCurrentStep('products');
+    }
   };
 
   const handleConvertToInstallation = async () => {
@@ -113,7 +120,13 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
         depositPaid: job.depositPaid,
         images: job.images,
         documents: job.documents,
-        checklist: [],
+        checklist: [
+          { id: '1', text: 'Confirm order with customer', completed: false },
+          { id: '2', text: 'Take installation photos', completed: false },
+          { id: '3', text: 'Get customer signature', completed: false },
+          { id: '4', text: 'Collect final payment', completed: false },
+          { id: '5', text: 'Send invoice', completed: false }
+        ],
         parentJobId: job.id, // Link to parent measurement job
         jobHistory: [{
           id: `history-${Date.now()}`,
@@ -311,6 +324,31 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
           />
         );
 
+      case 'installation-workflow':
+        return (
+          <InstallationJobScreen
+            job={job}
+            onComplete={(data) => {
+              onUpdateJob({
+                ...data,
+                status: 'completed',
+                completedDate: new Date().toISOString(),
+                jobHistory: [...job.jobHistory, {
+                  id: `history-${Date.now()}`,
+                  timestamp: new Date().toISOString(),
+                  action: 'installation_completed',
+                  description: 'Installation job completed',
+                  userId: user?.id || '',
+                  userName: user?.name || '',
+                  data
+                }]
+              });
+              setCurrentStep('complete');
+              sendCompletionEmail();
+            }}
+          />
+        );
+
       case 'convert-to-installation':
         return (
           <div className="text-center py-12">
@@ -347,7 +385,6 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
                     completedDate: new Date().toISOString()
                   });
                   setCurrentStep('complete');
-                  // Send completion email
                   sendCompletionEmail();
                 }}
                 className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
