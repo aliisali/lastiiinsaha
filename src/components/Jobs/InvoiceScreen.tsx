@@ -14,7 +14,13 @@ export function InvoiceScreen({ job, onComplete }: InvoiceScreenProps) {
   const [sent, setSent] = useState(false);
 
   const customer = customers.find(c => c.id === job.customerId);
-  const totalAmount = (job.selectedProducts || []).reduce((sum, p) => sum + (p.price * p.quantity), 0);
+
+  // Calculate total from selected products with proper type handling
+  const totalAmount = (job.selectedProducts || []).reduce((sum, p) => {
+    const price = parseFloat(String(p.price || 0));
+    const quantity = p.quantity || 1;
+    return sum + (price * quantity);
+  }, 0);
 
   const handleSendInvoice = async () => {
     setSending(true);
@@ -81,18 +87,22 @@ export function InvoiceScreen({ job, onComplete }: InvoiceScreenProps) {
             </h4>
           </div>
           <div className="divide-y divide-gray-200">
-            {job.selectedProducts.map((product: SelectedProduct) => (
-              <div key={product.id} className="p-4 flex justify-between items-center">
-                <div>
-                  <p className="font-medium text-gray-900">{product.productName}</p>
-                  <p className="text-sm text-gray-600">Quantity: {product.quantity}</p>
+            {job.selectedProducts.map((product: SelectedProduct) => {
+              const price = parseFloat(String(product.price || 0));
+              const quantity = product.quantity || 1;
+              return (
+                <div key={product.id} className="p-4 flex justify-between items-center">
+                  <div>
+                    <p className="font-medium text-gray-900">{product.productName}</p>
+                    <p className="text-sm text-gray-600">Quantity: {quantity}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-gray-900">${(price * quantity).toFixed(2)}</p>
+                    <p className="text-sm text-gray-600">${price.toFixed(2)} each</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">${(product.price * product.quantity).toFixed(2)}</p>
-                  <p className="text-sm text-gray-600">${product.price} each</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

@@ -107,18 +107,19 @@ export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepP
                     {product.image && (
                       <img
                         src={product.image}
-                        alt={product.name}
+                        alt={product.productName || product.name}
                         className="w-16 h-16 object-cover rounded mr-4"
                       />
                     )}
                     <div>
-                      <p className="font-semibold text-gray-900">{product.name}</p>
-                      <p className="text-sm text-gray-600">{product.description}</p>
+                      <p className="font-semibold text-gray-900">{product.productName || product.name}</p>
+                      <p className="text-sm text-gray-600">{product.description || ''}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-gray-900">${product.price}</p>
+                    <p className="font-semibold text-gray-900">${parseFloat(product.price || 0).toFixed(2)}</p>
                     <p className="text-sm text-gray-600">Qty: {product.quantity || 1}</p>
+                    <p className="text-sm font-semibold text-blue-600">Total: ${(parseFloat(product.price || 0) * (product.quantity || 1)).toFixed(2)}</p>
                   </div>
                 </div>
               ))}
