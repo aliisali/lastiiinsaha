@@ -51,20 +51,30 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
   };
 
   const generateInvoice = () => {
-    const quotation = parseFloat(String(job.quotation || '0'));
+    const selectedProducts = job.selectedProducts || [];
+
+    // Calculate subtotal from selected products
+    const calculatedSubtotal = selectedProducts.reduce((sum, product) => {
+      const price = parseFloat(String(product.price || 0));
+      const quantity = product.quantity || 1;
+      return sum + (price * quantity);
+    }, 0);
+
+    // Use the calculated subtotal or fall back to the job quotation
+    const subtotal = calculatedSubtotal > 0 ? calculatedSubtotal : parseFloat(String(job.quotation || '0'));
     const deposit = parseFloat(String(job.deposit || '0'));
-    const balance = quotation - deposit;
+    const balance = subtotal - deposit;
 
     return {
       invoiceNumber: `INV-${job.id}-${Date.now()}`,
       date: new Date().toLocaleDateString(),
       customer: null,
-      items: job.selectedProducts || [],
+      items: selectedProducts,
       measurements: job.measurements || [],
-      subtotal: quotation,
+      subtotal: subtotal,
       deposit: deposit,
       balance: balance,
-      total: quotation,
+      total: subtotal,
       paymentMethod: installationData.paymentMethod,
       paidInFull: true
     };
@@ -145,10 +155,10 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
           <tbody>
             {invoice.items.map((item: any, index: number) => (
               <tr key={index} className="border-b border-gray-100">
-                <td className="py-2 text-gray-900">{item.name}</td>
+                <td className="py-2 text-gray-900">{item.productName || item.name}</td>
                 <td className="text-right text-gray-900">{item.quantity || 1}</td>
-                <td className="text-right text-gray-900">${item.price}</td>
-                <td className="text-right text-gray-900">${(parseFloat(item.price) * (item.quantity || 1)).toFixed(2)}</td>
+                <td className="text-right text-gray-900">${parseFloat(item.price || 0).toFixed(2)}</td>
+                <td className="text-right text-gray-900">${(parseFloat(item.price || 0) * (item.quantity || 1)).toFixed(2)}</td>
               </tr>
             ))}
             <tr className="border-b border-gray-100">
