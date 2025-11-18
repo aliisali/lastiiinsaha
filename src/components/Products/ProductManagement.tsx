@@ -194,7 +194,21 @@ export function ProductManagement() {
           <p className="text-gray-600 mt-2">Manage products for AR visualization and catalogs</p>
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            // FIX: Reset form when opening create modal to prevent showing last product data
+            setNewProduct({
+              name: '',
+              category: '',
+              description: '',
+              image: '',
+              specifications: [''],
+              price: ''
+            });
+            setProductImages([]);
+            setImagePreview('');
+            setSelectedProduct(null);
+            setShowCreateModal(true);
+          }}
           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="w-5 h-5 mr-2" />
