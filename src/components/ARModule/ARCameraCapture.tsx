@@ -39,16 +39,18 @@ export function ARCameraCapture({ onCapture, onClose, title = 'AR Camera', overl
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         console.error('❌ Camera API not supported');
-        setPermissionError('Camera is not supported on this device or browser.');
+        setPermissionError('Camera is not supported on this device or browser. Please use HTTPS or localhost.');
         return;
       }
+
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
       console.log('📹 Requesting camera with facingMode:', facingMode);
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: facingMode,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          facingMode: { ideal: facingMode },
+          width: { ideal: isMobile ? 1920 : 1280 },
+          height: { ideal: isMobile ? 1080 : 720 }
         }
       });
 

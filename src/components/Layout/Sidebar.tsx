@@ -140,7 +140,11 @@ export function Sidebar({ activeTab, onTabChange, isMinimized, onToggleMinimize 
 
                     if (item.id === 'ar-camera' || item.id === 'ar-camera-v2') {
                       console.log('📹 Opening AR Camera in new tab...');
-                      window.open('/ar-camera.html', '_blank');
+                      const arCameraUrl = window.location.origin + '/ar-camera.html';
+                      const newWindow = window.open(arCameraUrl, '_blank', 'noopener,noreferrer');
+                      if (!newWindow) {
+                        alert('Please allow pop-ups to open AR Camera in a new tab');
+                      }
                     } else {
                       onTabChange(item.id);
                     }

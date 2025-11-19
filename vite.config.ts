@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { resolve } from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -20,6 +21,10 @@ export default defineConfig({
     sourcemap: false,
     minify: 'esbuild',
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        'ar-camera': resolve(__dirname, 'ar-camera.html'),
+      },
       output: {
         manualChunks: (id) => {
           if (id.includes('node_modules')) {

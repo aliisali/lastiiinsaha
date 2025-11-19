@@ -35,23 +35,30 @@ export default function ARCameraModule() {
       console.log('📹 Requesting camera permission...');
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setPermissionError('Camera is not supported on this device or browser.');
+        setPermissionError('Camera is not supported on this device or browser. Please ensure you are using HTTPS or localhost.');
         return;
       }
 
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
       const constraints = {
         video: {
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          facingMode: { ideal: 'environment' },
+          width: { ideal: isMobile ? 1920 : 1280 },
+          height: { ideal: isMobile ? 1080 : 720 }
         },
         audio: false
       };
 
-      console.log('📹 Requesting camera with facingMode:', constraints.video.facingMode);
+      console.log('📹 Requesting camera with constraints:', constraints);
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       console.log('✅ Camera stream obtained:', stream.getVideoTracks().length, 'video tracks');
+
+      const videoTrack = stream.getVideoTracks()[0];
+      const settings = videoTrack.getSettings();
+      console.log('📹 Camera settings:', settings);
+
       streamRef.current = stream;
 
       setShowCamera(true);
@@ -364,7 +371,12 @@ export default function ARCameraModule() {
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 mb-6 text-center">
           <Camera className="w-20 h-20 text-blue-400 mx-auto mb-4" />
           <h1 className="text-4xl font-bold text-white mb-3">AR Camera</h1>
-          <p className="text-blue-200 text-lg mb-6">Upload files, place them in AR, and capture screenshots</p>
+          <p className="text-blue-200 text-lg mb-4">Upload files, place them in AR, and capture screenshots</p>
+          <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-4 mt-4">
+            <p className="text-blue-100 text-sm">
+              <strong>Note:</strong> Camera access requires HTTPS or localhost. For best experience, use this on mobile devices with rear camera.
+            </p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
