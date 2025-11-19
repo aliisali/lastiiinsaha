@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { CreditCard, Banknote, Building, ArrowRight, DollarSign, AlertCircle, CheckCircle, Clock } from 'lucide-react';
-import { Job } from '../../types';
+import { CreditCard, Banknote, Building, ArrowRight, DollarSign, AlertCircle, CheckCircle, Clock, Package } from 'lucide-react';
+import { Job, SelectedProduct } from '../../types';
 
 interface MeasurementDepositPaymentProps {
   job: Job;
@@ -27,7 +27,15 @@ export function MeasurementDepositPayment({ job, onComplete, onSkip }: Measureme
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const [skipReason, setSkipReason] = useState('');
 
-  const totalAmount = job.quotation || 0;
+  // Calculate total from selected products if available
+  const selectedProductsTotal = (job.selectedProducts || []).reduce((sum, p) => {
+    const price = parseFloat(String(p.price || 0));
+    const quantity = p.quantity || 1;
+    return sum + (price * quantity);
+  }, 0);
+
+  // Use products total if available, otherwise use quotation
+  const totalAmount = selectedProductsTotal > 0 ? selectedProductsTotal : (job.quotation || 0);
   const defaultDeposit = totalAmount * 0.3;
   const remainingBalance = totalAmount - depositAmount;
 
@@ -98,6 +106,40 @@ export function MeasurementDepositPayment({ job, onComplete, onSkip }: Measureme
           Secure the booking with a deposit payment before scheduling installation
         </p>
       </div>
+
+      {/* Selected Products Display */}
+      {job.selectedProducts && job.selectedProducts.length > 0 && (
+        <div className="bg-white border-2 border-gray-200 rounded-xl p-6">
+          <h4 className="font-semibold text-gray-900 text-lg mb-3 flex items-center">
+            <Package className="w-5 h-5 mr-2 text-blue-600" />
+            Selected Products ({job.selectedProducts.length})
+          </h4>
+          <div className="space-y-3">
+            {job.selectedProducts.map((product: SelectedProduct) => {
+              const price = parseFloat(String(product.price || 0));
+              const quantity = product.quantity || 1;
+              const lineTotal = price * quantity;
+              return (
+                <div key={product.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{product.productName}</p>
+                    <p className="text-sm text-gray-600">Quantity: {quantity} × ${price.toFixed(2)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-gray-900">${lineTotal.toFixed(2)}</p>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="pt-3 border-t-2 border-gray-300">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-gray-900 text-lg">Products Total:</span>
+                <span className="font-bold text-blue-600 text-xl">${selectedProductsTotal.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-gradient-to-br from-blue-50 to-green-50 border-2 border-blue-200 rounded-xl p-6">
         <div className="flex items-start justify-between mb-4">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, FileText, Send, Download, Ruler, Calendar, User, MapPin, Package } from 'lucide-react';
+import { CheckCircle, FileText, Send, Download, Ruler, Calendar, User, MapPin, Package, DollarSign } from 'lucide-react';
 import { Job, JobMeasurement } from '../../../types';
 import { supabase } from '../../../lib/supabase';
 
@@ -220,6 +220,52 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
         </div>
       )}
 
+      {/* Deposit Payment Information */}
+      {(job.deposit && job.deposit > 0) && (
+        <div className="bg-green-50 border-2 border-green-300 rounded-lg p-6 mb-6">
+          <div className="flex items-center mb-4">
+            <div className="p-2 bg-green-100 rounded-lg mr-3">
+              <DollarSign className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-green-900 text-lg">Deposit Payment Received</h4>
+              <p className="text-sm text-green-700">Paid during measurement appointment</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Deposit Amount</p>
+                <p className="text-2xl font-bold text-green-600">${job.deposit.toFixed(2)}</p>
+              </div>
+              {job.depositPaidAt && (
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Payment Date</p>
+                  <p className="font-semibold text-gray-900">
+                    {new Date(job.depositPaidAt).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+              {job.depositPaymentMethod && (
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Payment Method</p>
+                  <p className="font-semibold text-gray-900 capitalize">
+                    {job.depositPaymentMethod.replace('-', ' ')}
+                  </p>
+                </div>
+              )}
+              {job.depositCustomerReference && (
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Reference Number</p>
+                  <p className="font-semibold text-gray-900">{job.depositCustomerReference}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Measurements from Parent Job */}
       {job.measurements && job.measurements.length > 0 && (
         <div className="bg-white border-2 border-green-200 rounded-lg p-6 mb-6">
@@ -374,22 +420,54 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
         </table>
 
         <div className="flex justify-end mb-6">
-          <div className="w-64 space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Subtotal:</span>
-              <span className="font-semibold text-gray-900">${invoice.subtotal.toFixed(2)}</span>
+          <div className="w-80 space-y-3">
+            <div className="flex justify-between text-lg">
+              <span className="text-gray-700 font-medium">Subtotal:</span>
+              <span className="font-bold text-gray-900">${invoice.subtotal.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-green-600">
-              <span>Deposit Paid:</span>
-              <span className="font-semibold">-${invoice.deposit.toFixed(2)}</span>
+
+            {invoice.deposit > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 -mx-2">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="text-green-800 font-semibold flex items-center">
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Deposit Paid (Measurement)
+                    </span>
+                    {job.depositPaidAt && (
+                      <p className="text-xs text-green-700 mt-1">
+                        Paid on {new Date(job.depositPaidAt).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                  <span className="font-bold text-green-700 text-lg">-${invoice.deposit.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between text-lg">
+              <span className="text-gray-700 font-medium">Balance Due:</span>
+              <span className="font-bold text-blue-600">${invoice.balance.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-blue-600">
-              <span>Balance Paid:</span>
-              <span className="font-semibold">-${invoice.balance.toFixed(2)}</span>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 -mx-2">
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="text-blue-800 font-semibold flex items-center">
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Balance Paid (Installation)
+                  </span>
+                  <p className="text-xs text-blue-700 mt-1">
+                    Paid today
+                  </p>
+                </div>
+                <span className="font-bold text-blue-700 text-lg">-${invoice.balance.toFixed(2)}</span>
+              </div>
             </div>
-            <div className="flex justify-between pt-2 border-t-2 border-gray-300">
-              <span className="font-bold text-gray-900">Total Paid:</span>
-              <span className="font-bold text-green-600 text-xl">${invoice.total.toFixed(2)}</span>
+
+            <div className="flex justify-between pt-3 border-t-2 border-gray-400">
+              <span className="font-bold text-gray-900 text-xl">Total Paid:</span>
+              <span className="font-bold text-green-600 text-2xl">${invoice.total.toFixed(2)}</span>
             </div>
           </div>
         </div>
