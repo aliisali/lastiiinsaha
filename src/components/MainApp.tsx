@@ -34,7 +34,6 @@ import { SubscriptionManagement } from './Admin/SubscriptionManagement';
 import { SubscriptionPage } from './Business/SubscriptionPage';
 import { SubscriptionBanner } from './Layout/SubscriptionBanner';
 import { BackgroundRemoverManager } from './Admin/BackgroundRemoverManager';
-import { BugManagement } from './Admin/BugManagement';
 
 export function MainApp() {
   const { user, logout } = useAuth();
@@ -63,7 +62,6 @@ export function MainApp() {
         case 'business-settings': return <BusinessSettingsManager />;
         case 'subscriptions': return <SubscriptionManagement />;
         case 'background-remover': return <BackgroundRemoverManager />;
-        case 'bug-management': return <BugManagement />;
         default: return <AdminDashboard />;
       }
     }
