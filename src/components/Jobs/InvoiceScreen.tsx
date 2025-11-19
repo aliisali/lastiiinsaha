@@ -119,29 +119,58 @@ export function InvoiceScreen({ job, onComplete }: InvoiceScreenProps) {
             {job.measurements.map((measurement: JobMeasurement) => (
               <div key={measurement.id} className="p-4">
                 <div className="flex justify-between items-start mb-2">
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium text-gray-900">{measurement.windowId}</p>
                     {measurement.location && (
                       <p className="text-sm text-gray-600">{measurement.location}</p>
                     )}
-                  </div>
-                  <div className="text-right text-sm">
-                    <p className="text-gray-900">{measurement.width} × {measurement.height} cm</p>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-gray-600">Width:</span>
+                        <span className="font-semibold text-gray-900 ml-1">{measurement.width} cm</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Height:</span>
+                        <span className="font-semibold text-gray-900 ml-1">{measurement.height} cm</span>
+                      </div>
+                      {measurement.controlType && measurement.controlType !== 'none' && (
+                        <div>
+                          <span className="text-gray-600">Control:</span>
+                          <span className="font-semibold text-gray-900 ml-1 capitalize">
+                            {measurement.controlType.replace('-', ' ')}
+                          </span>
+                        </div>
+                      )}
+                      {measurement.bracketType && (
+                        <div>
+                          <span className="text-gray-600">Bracket:</span>
+                          <span className="font-semibold text-gray-900 ml-1">
+                            {measurement.bracketType === 'top-fix' ? 'T (Top Fix)' : 'F (Face Fix)'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {measurement.notes && (
+                      <p className="text-sm text-gray-600 mt-2">
+                        <span className="font-medium">Notes:</span> {measurement.notes}
+                      </p>
+                    )}
                   </div>
                 </div>
                 {measurement.photos && measurement.photos.length > 0 && (
-                  <div className="flex gap-2 mt-2">
-                    {measurement.photos.slice(0, 3).map((photo, idx) => (
+                  <div className="flex gap-2 mt-3 pt-3 border-t border-gray-100">
+                    {measurement.photos.slice(0, 4).map((photo, idx) => (
                       <img
                         key={idx}
                         src={photo}
                         alt={`${measurement.windowId} - ${idx + 1}`}
-                        className="w-16 h-16 object-cover rounded border border-gray-200"
+                        className="w-20 h-20 object-cover rounded border border-gray-200 hover:scale-105 transition-transform cursor-pointer"
+                        onClick={() => window.open(photo, '_blank')}
                       />
                     ))}
-                    {measurement.photos.length > 3 && (
-                      <div className="w-16 h-16 bg-gray-100 rounded border border-gray-200 flex items-center justify-center text-sm text-gray-600 font-medium">
-                        +{measurement.photos.length - 3}
+                    {measurement.photos.length > 4 && (
+                      <div className="w-20 h-20 bg-gray-100 rounded border border-gray-200 flex items-center justify-center text-sm text-gray-600 font-medium">
+                        +{measurement.photos.length - 4}
                       </div>
                     )}
                   </div>

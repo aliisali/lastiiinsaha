@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, FileText, Send, Download } from 'lucide-react';
-import { Job } from '../../../types';
+import { CheckCircle, FileText, Send, Download, Ruler, Calendar, User, MapPin } from 'lucide-react';
+import { Job, JobMeasurement } from '../../../types';
 import { supabase } from '../../../lib/supabase';
 
 interface InvoiceStepProps {
@@ -13,9 +13,13 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [sending, setSending] = useState(false);
+  const [parentJob, setParentJob] = useState<Job | null>(null);
+  const [customer, setCustomer] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadInvoiceTemplates();
+    loadParentJobAndCustomer();
   }, []);
 
   const loadInvoiceTemplates = async () => {
@@ -47,6 +51,41 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
         content: 'Standard invoice format'
       }]);
       setSelectedTemplate('default');
+    }
+  };
+
+  const loadParentJobAndCustomer = async () => {
+    try {
+      // Check if parent job data is cached
+      if (job.parentJobData) {
+        setParentJob(job.parentJobData);
+      } else if (job.parentJobId) {
+        // Fetch parent job from database
+        const { data: parentJobData, error: parentError } = await supabase
+          .from('jobs')
+          .select('*')
+          .eq('id', job.parentJobId)
+          .single();
+
+        if (!parentError && parentJobData) {
+          setParentJob(parentJobData as Job);
+        }
+      }
+
+      // Fetch customer data
+      const { data: customerData, error: customerError } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', job.customerId)
+        .single();
+
+      if (!customerError && customerData) {
+        setCustomer(customerData);
+      }
+    } catch (error) {
+      console.error('Error loading parent job and customer:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -121,6 +160,134 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
         </div>
       </div>
 
+      {/* Measurement Job Reference Section */}
+      {(parentJob || job.parentJobId) && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+          <div className="flex items-center mb-4">
+            <div className="p-2 bg-blue-100 rounded-lg mr-3">
+              <Ruler className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-blue-900">Measurement Job Reference</h4>
+              <p className="text-sm text-blue-700">Data from original measurement appointment</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-4 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center">
+                <FileText className="w-4 h-4 text-gray-500 mr-2" />
+                <span className="text-gray-600">Measurement Job ID:</span>
+                <span className="font-semibold text-gray-900 ml-2">{job.parentJobId}</span>
+              </div>
+              {parentJob && (
+                <>
+                  <div className="flex items-center">
+                    <Calendar className="w-4 h-4 text-gray-500 mr-2" />
+                    <span className="text-gray-600">Measured on:</span>
+                    <span className="font-semibold text-gray-900 ml-2">
+                      {new Date(parentJob.scheduledDate).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <User className="w-4 h-4 text-gray-500 mr-2" />
+                    <span className="text-gray-600">Completed:</span>
+                    <span className="font-semibold text-gray-900 ml-2">
+                      {parentJob.completedDate ? new Date(parentJob.completedDate).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Measurements from Parent Job */}
+      {job.measurements && job.measurements.length > 0 && (
+        <div className="bg-white border-2 border-green-200 rounded-lg p-6 mb-6">
+          <div className="flex items-center mb-4">
+            <div className="p-2 bg-green-100 rounded-lg mr-3">
+              <Ruler className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-lg text-gray-900">Window Measurements</h4>
+              <p className="text-sm text-gray-600">From measurement appointment - {job.measurements.length} window{job.measurements.length !== 1 ? 's' : ''}</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {job.measurements.map((measurement: JobMeasurement, index: number) => (
+              <div key={measurement.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center mb-2">
+                      <span className="font-bold text-lg text-gray-900">{measurement.windowId}</span>
+                      {measurement.location && (
+                        <span className="ml-3 flex items-center text-sm text-gray-600">
+                          <MapPin className="w-4 h-4 mr-1" />
+                          {measurement.location}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                      <div>
+                        <span className="text-gray-600">Width:</span>
+                        <span className="font-semibold text-gray-900 ml-1">{measurement.width} cm</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Height:</span>
+                        <span className="font-semibold text-gray-900 ml-1">{measurement.height} cm</span>
+                      </div>
+                      {measurement.controlType && measurement.controlType !== 'none' && (
+                        <div>
+                          <span className="text-gray-600">Control:</span>
+                          <span className="font-semibold text-gray-900 ml-1 capitalize">
+                            {measurement.controlType.replace('-', ' ')}
+                          </span>
+                        </div>
+                      )}
+                      {measurement.bracketType && (
+                        <div>
+                          <span className="text-gray-600">Bracket:</span>
+                          <span className="font-semibold text-gray-900 ml-1">
+                            {measurement.bracketType === 'top-fix' ? 'T (Top Fix)' : 'F (Face Fix)'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    {measurement.notes && (
+                      <p className="text-sm text-gray-600 mt-2">
+                        <span className="font-medium">Notes:</span> {measurement.notes}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {measurement.photos && measurement.photos.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      Measurement Photos ({measurement.photos.length})
+                    </p>
+                    <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
+                      {measurement.photos.map((photo, photoIdx) => (
+                        <img
+                          key={photoIdx}
+                          src={photo}
+                          alt={`${measurement.windowId} - Photo ${photoIdx + 1}`}
+                          className="w-full h-20 object-cover rounded border border-gray-300 hover:scale-105 transition-transform cursor-pointer"
+                          onClick={() => window.open(photo, '_blank')}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="bg-white border-2 border-gray-200 rounded-lg p-6 mb-6">
         <div className="flex justify-between items-start mb-6">
           <div>
@@ -137,10 +304,10 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
 
         <div className="border-t border-b border-gray-200 py-4 mb-6">
           <p className="text-sm text-gray-600 mb-1">Bill To:</p>
-          <p className="font-semibold text-gray-900">Customer Name</p>
-          <p className="text-sm text-gray-600">Customer Address</p>
-          <p className="text-sm text-gray-600">Customer Phone</p>
-          <p className="text-sm text-gray-600">Customer Email</p>
+          <p className="font-semibold text-gray-900">{customer?.name || 'Customer Name'}</p>
+          <p className="text-sm text-gray-600">{customer?.address || 'Customer Address'}</p>
+          <p className="text-sm text-gray-600">{customer?.phone || 'Customer Phone'}</p>
+          <p className="text-sm text-gray-600">{customer?.email || 'Customer Email'}</p>
         </div>
 
         <table className="w-full mb-6">

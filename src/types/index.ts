@@ -67,6 +67,7 @@ export interface Job {
   selectedProducts?: SelectedProduct[];
   jobHistory: JobHistoryEntry[];
   parentJobId?: string;
+  parentJobData?: Job; // Cached parent job data for installation jobs
   taskName?: string;
   taskCompleted?: boolean;
   taskComments?: string;
