@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Building2, Calendar, ClipboardList, FileText, Settings, BarChart3, Camera, Mail, Bell, Package, LogOut, Headphones, Code, Shield, Cuboid as Cube, ChevronLeft, ChevronRight, Menu, Clock, Sparkles, CreditCard, User, Wand2 } from 'lucide-react';
+import { Users, Building2, Calendar, ClipboardList, FileText, Settings, BarChart3, Camera, Mail, Bell, Package, LogOut, Headphones, Code, Shield, Cuboid as Cube, ChevronLeft, ChevronRight, Menu, Clock, Sparkles, CreditCard, User, Wand2, Bug } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useModulePermissions } from '../../hooks/useModulePermissions';
 import { Logo } from './Logo';
@@ -58,6 +58,7 @@ export function Sidebar({ activeTab, onTabChange, isMinimized, onToggleMinimize 
           { id: 'email-manager', label: 'Email Manager', icon: Mail },
           { id: 'subscriptions', label: 'Subscriptions', icon: CreditCard },
           { id: 'background-remover', label: 'Background Remover', icon: Wand2 },
+          { id: 'bug-management', label: 'Bug Management', icon: Bug },
         ];
       case 'business':
         return [
