@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Ruler, Save, ArrowRight, Trash2, Edit, X, Copy, Camera, Image, CheckCircle } from 'lucide-react';
+import { Plus, Ruler, Save, ArrowRight, Trash2, Edit, X, Copy, Camera, Image, CheckCircle, Calendar } from 'lucide-react';
 import { Job, JobMeasurement } from '../../types';
 
 interface EnhancedMeasurementScreenProps {
   job: Job;
-  onComplete: (data: { measurements: JobMeasurement[]; convertToInstallation: boolean }) => void;
+  onComplete: (data: { measurements: JobMeasurement[]; convertToInstallation: boolean; installationDate?: string; installationTime?: string }) => void;
 }
 
 export function EnhancedMeasurementScreen({ job, onComplete }: EnhancedMeasurementScreenProps) {
@@ -13,6 +13,9 @@ export function EnhancedMeasurementScreen({ job, onComplete }: EnhancedMeasureme
   const [measurementPhotos, setMeasurementPhotos] = useState<string[]>([]);
   const [showCamera, setShowCamera] = useState(false);
   const [convertToInstallation, setConvertToInstallation] = useState(true);
+  const [scheduleNow, setScheduleNow] = useState(false);
+  const [installationDate, setInstallationDate] = useState('');
+  const [installationTime, setInstallationTime] = useState('09:00');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -202,7 +205,36 @@ export function EnhancedMeasurementScreen({ job, onComplete }: EnhancedMeasureme
       alert('Please add at least one measurement');
       return;
     }
-    onComplete({ measurements, convertToInstallation });
+
+    // Validate installation date if scheduling now
+    if (convertToInstallation && scheduleNow) {
+      if (!installationDate) {
+        alert('Please select an installation date');
+        return;
+      }
+
+      const selectedDate = new Date(installationDate);
+      const measurementDate = new Date(job.scheduledDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (selectedDate < today) {
+        alert('Installation date cannot be in the past');
+        return;
+      }
+
+      if (selectedDate < measurementDate) {
+        alert('Installation date cannot be before the measurement date');
+        return;
+      }
+    }
+
+    onComplete({
+      measurements,
+      convertToInstallation,
+      installationDate: scheduleNow ? installationDate : undefined,
+      installationTime: scheduleNow ? installationTime : undefined
+    });
   };
 
   if (showCamera) {
@@ -546,7 +578,7 @@ export function EnhancedMeasurementScreen({ job, onComplete }: EnhancedMeasureme
 
       {/* Convert to Installation Option */}
       {measurements.length > 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+        <div className="bg-green-50 border border-green-200 rounded-lg p-6 space-y-4">
           <label className="flex items-start cursor-pointer">
             <input
               type="checkbox"
@@ -554,13 +586,69 @@ export function EnhancedMeasurementScreen({ job, onComplete }: EnhancedMeasureme
               onChange={(e) => setConvertToInstallation(e.target.checked)}
               className="w-5 h-5 text-green-600 rounded mt-0.5 mr-3"
             />
-            <div>
+            <div className="flex-1">
               <p className="font-semibold text-green-900">Auto-create Installation Job</p>
               <p className="text-sm text-green-800 mt-1">
                 When you complete these measurements, an installation job will be automatically created with all measurement details. This saves time and ensures continuity between measurement and installation appointments.
               </p>
             </div>
           </label>
+
+          {convertToInstallation && (
+            <div className="ml-8 space-y-4 pt-4 border-t border-green-200">
+              <label className="flex items-start cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={scheduleNow}
+                  onChange={(e) => setScheduleNow(e.target.checked)}
+                  className="w-5 h-5 text-green-600 rounded mt-0.5 mr-3"
+                />
+                <div className="flex-1">
+                  <p className="font-semibold text-green-900">Schedule Installation Now</p>
+                  <p className="text-sm text-green-800 mt-1">
+                    Select a specific date and time for the installation. If unchecked, the installation will be marked as "To Be Determined" and scheduled later by the business.
+                  </p>
+                </div>
+              </label>
+
+              {scheduleNow && (
+                <div className="ml-8 bg-white rounded-lg p-4 border border-green-300">
+                  <div className="flex items-center mb-3">
+                    <Calendar className="w-5 h-5 text-green-600 mr-2" />
+                    <h4 className="font-semibold text-gray-900">Installation Schedule</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Installation Date *
+                      </label>
+                      <input
+                        type="date"
+                        value={installationDate}
+                        onChange={(e) => setInstallationDate(e.target.value)}
+                        min={new Date(Math.max(new Date(job.scheduledDate).getTime(), new Date().getTime())).toISOString().split('T')[0]}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Installation Time *
+                      </label>
+                      <input
+                        type="time"
+                        value={installationTime}
+                        onChange={(e) => setInstallationTime(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-2">
+                    The installation will be scheduled for {installationDate ? new Date(installationDate).toLocaleDateString() : 'the selected date'} at {installationTime}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
