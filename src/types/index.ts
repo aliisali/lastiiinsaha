@@ -58,6 +58,10 @@ export interface Job {
   deposit?: number;
   depositPaid?: boolean;
   depositPaidAt?: string;
+  depositPaymentMethod?: 'card' | 'cash' | 'bank-transfer';
+  depositCustomerReference?: string;
+  depositPaymentSkipped?: boolean;
+  depositSkipReason?: string;
   paymentMethod?: 'card' | 'cash' | 'bank-transfer';
   customerReference?: string;
   signature?: string;

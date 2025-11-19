@@ -9,6 +9,7 @@ import { SignatureCapture } from './SignatureCapture';
 import { InvoiceScreen } from './InvoiceScreen';
 import { InstallationJobScreen } from './InstallationJobScreen';
 import { InstallationSchedulingScreen } from './InstallationSchedulingScreen';
+import { MeasurementDepositPayment } from './MeasurementDepositPayment';
 import { useAuth } from '../../contexts/AuthContext';
 import { useData } from '../../contexts/DataContext';
 import { EmailService } from '../../services/EmailService';
@@ -22,7 +23,7 @@ interface JobWorkflowProps {
 export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
   const { user } = useAuth();
   const { customers, addNotification, addJob } = useData();
-  const [currentStep, setCurrentStep] = useState<'start' | 'products' | 'measurements' | 'quotation' | 'payment' | 'signature' | 'invoice' | 'complete' | 'convert-to-installation' | 'installation-scheduling' | 'installation-workflow'>('start');
+  const [currentStep, setCurrentStep] = useState<'start' | 'products' | 'measurements' | 'quotation' | 'payment' | 'signature' | 'invoice' | 'complete' | 'convert-to-installation' | 'installation-scheduling' | 'installation-workflow' | 'measurement-deposit-payment'>('start');
   const [jobStartTime, setJobStartTime] = useState<string | null>(null);
   const [showConversionSuccess, setShowConversionSuccess] = useState(false);
 
@@ -84,6 +85,18 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
   };
 
   const handleConvertToInstallation = async () => {
+    // Check if user wants to convert to installation
+    const shouldConvert = (window as any).__convertToInstallation;
+    if (!shouldConvert) {
+      // User opted not to create installation job, just complete measurement
+      onUpdateJob({
+        status: 'completed',
+        completedDate: new Date().toISOString()
+      });
+      setCurrentStep('complete');
+      return;
+    }
+
     // Validate deposit payment before creating installation job
     if (!job.depositPaid) {
       alert('Deposit payment is required before creating an installation job. Please complete the payment step first.');
@@ -215,16 +228,20 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
         }
         break;
       case 'measurements':
-        // For measurement jobs, go directly to invoice
-        setCurrentStep('invoice');
+        // For measurement jobs, go to deposit payment after measurements
+        if (job.jobType === 'measurement') {
+          setCurrentStep('measurement-deposit-payment');
+        } else {
+          setCurrentStep('invoice');
+        }
+        break;
+      case 'measurement-deposit-payment':
+        // After deposit payment, move to installation scheduling
+        setCurrentStep('installation-scheduling');
         break;
       case 'invoice':
-        // After invoice, show conversion option for measurement jobs
-        if (job.jobType === 'measurement') {
-          setCurrentStep('convert-to-installation');
-        } else {
-          setCurrentStep('complete');
-        }
+        // After invoice, complete the job
+        setCurrentStep('complete');
         break;
       case 'quotation':
         setCurrentStep('payment');
@@ -286,20 +303,18 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
           <EnhancedMeasurementScreen
             job={job}
             onComplete={(data) => {
-              // Save measurements to current job
-              handleStepComplete({ measurements: data.measurements });
-
-              // If auto-convert is enabled, create installation job
-              if (data.convertToInstallation) {
-                // Store installation scheduling info for later use
-                if (data.installationDate && data.installationTime) {
-                  (window as any).__pendingInstallationSchedule = {
-                    date: data.installationDate,
-                    time: data.installationTime
-                  };
-                }
-                setCurrentStep('convert-to-installation');
+              // Store scheduling info for later use
+              if (data.installationDate && data.installationTime) {
+                (window as any).__pendingInstallationSchedule = {
+                  date: data.installationDate,
+                  time: data.installationTime
+                };
               }
+              // Store convert to installation preference
+              (window as any).__convertToInstallation = data.convertToInstallation;
+
+              // Save measurements and move to payment
+              handleStepComplete({ measurements: data.measurements });
             }}
           />
         );
@@ -362,6 +377,34 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
           />
         );
 
+      case 'measurement-deposit-payment':
+        return (
+          <MeasurementDepositPayment
+            job={job}
+            onComplete={(paymentData) => {
+              // Save payment data and proceed
+              handleStepComplete(paymentData);
+            }}
+            onSkip={(reason) => {
+              // Mark job as awaiting deposit, don't create installation job
+              onUpdateJob({
+                status: 'awaiting-deposit',
+                depositPaymentSkipped: true,
+                depositSkipReason: reason,
+                jobHistory: [...job.jobHistory, {
+                  id: `history-${Date.now()}`,
+                  timestamp: new Date().toISOString(),
+                  action: 'deposit_payment_deferred',
+                  description: `Deposit payment deferred: ${reason}`,
+                  userId: user?.id || '',
+                  userName: user?.name || ''
+                }]
+              });
+              setCurrentStep('complete');
+            }}
+          />
+        );
+
       case 'installation-scheduling':
         return (
           <InstallationSchedulingScreen
@@ -386,7 +429,7 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
                   userName: user?.name || ''
                 }]
               });
-              setCurrentStep('complete');
+              setCurrentStep('convert-to-installation');
             }}
             onCancel={() => {
               onClose();
@@ -460,11 +503,25 @@ export function JobWorkflow({ job, onUpdateJob, onClose }: JobWorkflowProps) {
               Measurement Complete! Create Installation Job?
             </h2>
             <p className="text-gray-600 mb-2">
-              The measurement has been completed successfully.
+              The measurement has been completed successfully and deposit has been paid.
             </p>
             <p className="text-gray-600 mb-6">
               A new installation job will be created with all measurement data.
             </p>
+
+            {job.depositPaid && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 max-w-md mx-auto">
+                <h3 className="font-semibold text-green-900 mb-2">Payment Confirmed ✓</h3>
+                <div className="text-sm text-green-800 space-y-1 text-left">
+                  <p><strong>Deposit Paid:</strong> ${job.deposit?.toFixed(2)}</p>
+                  <p><strong>Payment Method:</strong> {job.depositPaymentMethod || 'N/A'}</p>
+                  <p><strong>Reference:</strong> {job.depositCustomerReference || 'N/A'}</p>
+                  {job.quotation && (
+                    <p><strong>Remaining Balance:</strong> ${(job.quotation - (job.deposit || 0)).toFixed(2)}</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 max-w-md mx-auto">
               <h3 className="font-semibold text-gray-900 mb-2">What happens next:</h3>
