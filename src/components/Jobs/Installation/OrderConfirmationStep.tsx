@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Package, AlertCircle } from 'lucide-react';
+import { CheckCircle, Package, AlertCircle, DollarSign, Calendar, User } from 'lucide-react';
 import { Job, Customer, Business } from '../../../types';
 import { supabase } from '../../../lib/supabase';
 
@@ -12,6 +12,7 @@ export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepP
   const [confirmed, setConfirmed] = useState(false);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
+  const [parentJob, setParentJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,13 +21,25 @@ export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepP
 
   const loadData = async () => {
     try {
-      const [customerRes, businessRes] = await Promise.all([
-        supabase.from('customers').select('*').eq('id', job.customerId).single(),
-        supabase.from('businesses').select('*').eq('id', job.businessId).single()
-      ]);
+      const promises = [
+        supabase.from('customers').select('*').eq('id', job.customerId).maybeSingle(),
+        supabase.from('businesses').select('*').eq('id', job.businessId).maybeSingle()
+      ];
+
+      if (job.parentJobData) {
+        setParentJob(job.parentJobData);
+      } else if (job.parentJobId) {
+        promises.push(
+          supabase.from('jobs').select('*').eq('id', job.parentJobId).maybeSingle()
+        );
+      }
+
+      const results = await Promise.all(promises);
+      const [customerRes, businessRes, parentJobRes] = results;
 
       if (customerRes.data) setCustomer(customerRes.data);
       if (businessRes.data) setBusiness(businessRes.data);
+      if (parentJobRes && parentJobRes.data) setParentJob(parentJobRes.data as Job);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -47,8 +60,19 @@ export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepP
     });
   };
 
-  const measurements = job.measurements || [];
-  const products = job.selectedProducts || [];
+  const measurements = parentJob?.measurements || job.measurements || [];
+  const products = parentJob?.selectedProducts || job.selectedProducts || [];
+
+  const quotationAmount = parentJob?.quotation || job.quotation || 0;
+  const depositAmount = parentJob?.deposit || job.deposit || 0;
+  const depositPaid = parentJob?.depositPaid || job.depositPaid || false;
+  const depositPaidAt = parentJob?.depositPaidAt || job.depositPaidAt;
+  const depositPaymentMethod = parentJob?.depositPaymentMethod || job.depositPaymentMethod;
+  const depositReference = parentJob?.depositCustomerReference || job.depositCustomerReference;
+  const depositSkipped = parentJob?.depositPaymentSkipped || job.depositPaymentSkipped || false;
+  const depositSkipReason = parentJob?.depositSkipReason || job.depositSkipReason;
+
+  const remainingBalance = quotationAmount - depositAmount;
 
   if (loading) {
     return (
@@ -79,6 +103,32 @@ export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepP
       </div>
 
       <div className="space-y-6">
+        {parentJob && (
+          <div className="bg-gradient-to-r from-blue-50 to-teal-50 border-2 border-blue-200 rounded-lg p-6">
+            <div className="flex items-center mb-4">
+              <Calendar className="w-6 h-6 text-blue-600 mr-3" />
+              <h4 className="font-bold text-xl text-blue-900">Measurement Job Information</h4>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <p className="text-sm text-gray-600 mb-1">Measurement Date</p>
+                <p className="font-semibold text-gray-900">
+                  {parentJob.scheduledDate ? new Date(parentJob.scheduledDate).toLocaleDateString() : 'N/A'}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <p className="text-sm text-gray-600 mb-1">Job Reference</p>
+                <p className="font-semibold text-gray-900">#{parentJob.id.slice(0, 8)}</p>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <p className="text-sm text-gray-600 mb-1">Status</p>
+                <p className="font-semibold text-green-600">
+                  {parentJob.status === 'completed' ? 'Completed' : parentJob.status}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="border border-gray-200 rounded-lg p-6">
           <h4 className="font-semibold text-lg text-gray-900 mb-4">Customer Information</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -144,13 +194,26 @@ export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepP
                 </thead>
                 <tbody>
                   {measurements.map((measurement: any, index: number) => (
-                    <tr key={index} className="border-b border-gray-100">
+                    <tr key={index} className={`border-b border-gray-100 ${measurement.productName ? 'bg-green-50' : ''}`}>
                       <td className="py-2 px-3 text-gray-900">{measurement.area || measurement.location || `Window ${index + 1}`}</td>
                       <td className="py-2 px-3 text-center text-gray-900">{measurement.width}cm</td>
                       <td className="py-2 px-3 text-center text-gray-900">{measurement.depth || measurement.height}cm</td>
-                      <td className="py-2 px-3 text-gray-900">{measurement.productName || '-'}</td>
-                      <td className="py-2 px-3 text-right text-gray-900 font-semibold">
-                        {measurement.productPrice ? `$${measurement.productPrice.toFixed(2)}` : '-'}
+                      <td className="py-2 px-3">
+                        {measurement.productName ? (
+                          <div className="flex items-center">
+                            <Package className="w-4 h-4 text-green-600 mr-2" />
+                            <span className="font-semibold text-green-900">{measurement.productName}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        {measurement.productPrice ? (
+                          <span className="font-bold text-green-700">${measurement.productPrice.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </td>
                       <td className="py-2 px-3 text-gray-600 text-sm">{measurement.comments || measurement.notes || '-'}</td>
                     </tr>
@@ -161,24 +224,76 @@ export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepP
           </div>
         )}
 
-        <div className="border border-gray-200 rounded-lg p-6">
-          <h4 className="font-semibold text-lg text-gray-900 mb-4">Order Summary</h4>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Quotation Amount</span>
-              <span className="font-semibold text-gray-900">${job.quotation || '0.00'}</span>
+        <div className="bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-200 rounded-lg p-6">
+          <div className="flex items-center mb-4">
+            <DollarSign className="w-6 h-6 text-green-600 mr-3" />
+            <h4 className="font-bold text-xl text-gray-900">Payment Summary</h4>
+          </div>
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg p-4 shadow-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700 font-medium">Quotation Amount</span>
+                <span className="text-2xl font-bold text-gray-900">${quotationAmount.toFixed(2)}</span>
+              </div>
+              {parentJob && (
+                <p className="text-xs text-gray-500 mt-1">From measurement job dated {new Date(parentJob.scheduledDate).toLocaleDateString()}</p>
+              )}
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Deposit Paid</span>
-              <span className="font-semibold text-green-600">
-                {job.depositPaid ? `$${job.deposit || '0.00'}` : 'Not Paid'}
-              </span>
+
+            <div className="bg-white rounded-lg p-4 shadow-sm border-2 border-green-200">
+              <div className="flex justify-between items-center mb-2">
+                <div>
+                  <span className="text-gray-700 font-medium">Deposit Paid at Measurement</span>
+                  {depositPaid && depositPaidAt && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Paid on {new Date(depositPaidAt).toLocaleDateString()} at {new Date(depositPaidAt).toLocaleTimeString()}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  {depositPaid ? (
+                    <>
+                      <span className="text-2xl font-bold text-green-600">${depositAmount.toFixed(2)}</span>
+                      <div className="flex items-center justify-end mt-1">
+                        <CheckCircle className="w-4 h-4 text-green-600 mr-1" />
+                        <span className="text-xs font-semibold text-green-600">PAID</span>
+                      </div>
+                    </>
+                  ) : depositSkipped ? (
+                    <>
+                      <span className="text-lg font-semibold text-orange-600">Deferred</span>
+                      {depositSkipReason && (
+                        <p className="text-xs text-orange-600 mt-1">Reason: {depositSkipReason}</p>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-lg font-semibold text-red-600">Not Paid</span>
+                  )}
+                </div>
+              </div>
+              {depositPaid && depositPaymentMethod && (
+                <div className="flex items-center text-xs text-gray-600 mt-2 pt-2 border-t border-gray-200">
+                  <span className="font-medium">Payment Method:</span>
+                  <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                    {depositPaymentMethod === 'card' ? 'Card' : depositPaymentMethod === 'cash' ? 'Cash' : 'Bank Transfer'}
+                  </span>
+                  {depositReference && (
+                    <span className="ml-3">
+                      <span className="font-medium">Ref:</span> {depositReference}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="flex justify-between pt-2 border-t border-gray-200">
-              <span className="font-semibold text-gray-900">Balance Due</span>
-              <span className="font-bold text-blue-600">
-                ${(parseFloat(String(job.quotation || '0')) - parseFloat(String(job.deposit || '0'))).toFixed(2)}
-              </span>
+
+            <div className="bg-gradient-to-r from-blue-100 to-blue-50 rounded-lg p-4 shadow-sm border-2 border-blue-300">
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="text-blue-900 font-bold text-lg">Remaining Balance Due</span>
+                  <p className="text-xs text-blue-700 mt-1">To be collected after installation</p>
+                </div>
+                <span className="text-3xl font-bold text-blue-600">${remainingBalance.toFixed(2)}</span>
+              </div>
             </div>
           </div>
         </div>
