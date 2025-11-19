@@ -43,7 +43,7 @@ export interface Job {
   title: string;
   description: string;
   jobType: 'measurement' | 'installation' | 'task';
-  status: 'pending' | 'confirmed' | 'in-progress' | 'completed' | 'cancelled' | 'tbd' | 'awaiting-deposit' | 'awaiting-payment';
+  status: 'pending' | 'confirmed' | 'in-progress' | 'completed' | 'cancelled' | 'tbd' | 'awaiting-deposit' | 'awaiting-payment' | 'deposit-paid-pending-schedule' | 'pending-installation-schedule';
   customerId: string;
   employeeId: string | null;
   businessId: string;
@@ -57,6 +57,7 @@ export interface Job {
   invoice?: number;
   deposit?: number;
   depositPaid?: boolean;
+  depositPaidAt?: string;
   paymentMethod?: 'card' | 'cash' | 'bank-transfer';
   customerReference?: string;
   signature?: string;
@@ -67,7 +68,9 @@ export interface Job {
   selectedProducts?: SelectedProduct[];
   jobHistory: JobHistoryEntry[];
   parentJobId?: string;
-  parentJobData?: Job; // Cached parent job data for installation jobs
+  parentJobData?: Job;
+  needsInstallationScheduling?: boolean;
+  installationSchedulingSkipped?: boolean;
   taskName?: string;
   taskCompleted?: boolean;
   taskComments?: string;

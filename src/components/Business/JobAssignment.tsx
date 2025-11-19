@@ -1,20 +1,30 @@
 import React, { useState } from 'react';
-import { Users, Calendar, Clock, User, Check, X, ArrowRight, Eye, Edit } from 'lucide-react';
+import { Users, Calendar, Clock, User, Check, X, ArrowRight, Eye, Edit, AlertCircle } from 'lucide-react';
 import { useData } from '../../contexts/DataContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { InstallationSchedulingScreen } from '../Jobs/InstallationSchedulingScreen';
 
 export function JobAssignmentCenter() {
-  const { jobs, users, updateJob, customers } = useData();
+  const { jobs, users, updateJob, customers, addJob } = useData();
   const { user } = useAuth();
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showSchedulingModal, setShowSchedulingModal] = useState(false);
 
   // Get unassigned jobs for this business
   const unassignedJobs = jobs.filter(job =>
     job.businessId === user?.businessId &&
     (!job.employeeId || job.employeeId === '' || job.employeeId === null) &&
     job.status === 'pending'
+  );
+
+  // Get jobs that need installation scheduling (deposit paid but not scheduled)
+  const pendingSchedulingJobs = jobs.filter(job =>
+    job.businessId === user?.businessId &&
+    job.jobType === 'measurement' &&
+    (job.status === 'deposit-paid-pending-schedule' || job.needsInstallationScheduling) &&
+    job.depositPaid === true
   );
 
   // Get employees for this business
@@ -69,12 +79,161 @@ export function JobAssignmentCenter() {
     }
   };
 
+  const handleScheduleInstallation = async (date: string, time: string) => {
+    try {
+      // Create installation job with the scheduled date/time
+
+      const newInstallationJob = {
+        title: `Installation - ${selectedJob.title}`,
+        description: `Installation job created from measurement job #${selectedJob.id}. Scheduled for ${new Date(date).toLocaleDateString()} at ${time}.`,
+        jobType: 'installation' as const,
+        customerId: selectedJob.customerId,
+        businessId: selectedJob.businessId,
+        employeeId: null,
+        scheduledDate: date,
+        scheduledTime: time,
+        status: 'pending' as const,
+        measurements: selectedJob.measurements,
+        selectedProducts: selectedJob.selectedProducts,
+        quotation: selectedJob.quotation,
+        deposit: selectedJob.deposit,
+        depositPaid: selectedJob.depositPaid,
+        images: selectedJob.images,
+        documents: selectedJob.documents,
+        checklist: [
+          { id: '1', text: 'Confirm order with customer', completed: false },
+          { id: '2', text: 'Take installation photos', completed: false },
+          { id: '3', text: 'Get customer signature', completed: false },
+          { id: '4', text: 'Collect final payment', completed: false },
+          { id: '5', text: 'Send invoice', completed: false }
+        ],
+        parentJobId: selectedJob.id,
+        parentJobData: selectedJob,
+        jobHistory: [{
+          id: `history-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          action: 'installation_job_created',
+          description: `Created from measurement job #${selectedJob.id}. Scheduled for ${new Date(date).toLocaleDateString()} at ${time}.`,
+          userId: user?.id || '',
+          userName: user?.name || '',
+          data: {
+            parentJobId: selectedJob.id,
+            scheduledDate: date,
+            scheduledTime: time,
+            isScheduled: true
+          }
+        }]
+      };
+
+      await addJob(newInstallationJob);
+
+      // Update the measurement job
+      await updateJob(selectedJob.id, {
+        needsInstallationScheduling: false,
+        installationSchedulingSkipped: false,
+        status: 'completed',
+        completedDate: new Date().toISOString(),
+        jobHistory: [
+          ...selectedJob.jobHistory,
+          {
+            id: `history-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            action: 'installation_scheduled',
+            description: `Installation scheduled for ${new Date(date).toLocaleDateString()} at ${time}`,
+            userId: user?.id || '',
+            userName: user?.name || ''
+          }
+        ]
+      });
+
+      setShowSchedulingModal(false);
+      setSelectedJob(null);
+
+      const successDiv = document.createElement('div');
+      successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      successDiv.textContent = 'Installation scheduled successfully!';
+      document.body.appendChild(successDiv);
+
+      setTimeout(() => {
+        if (document.body.contains(successDiv)) {
+          document.body.removeChild(successDiv);
+        }
+      }, 3000);
+
+    } catch (error) {
+      console.error('❌ Error scheduling installation:', error);
+      alert('Failed to schedule installation. Please try again.');
+    }
+  };
+
   return (
     <div className="min-h-full bg-gradient-to-br from-slate-50 via-blue-50 to-gray-50 p-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Job Assignment Center</h1>
         <p className="text-gray-600 mt-2">Assign incoming jobs to your team members</p>
       </div>
+
+      {/* Pending Installation Scheduling */}
+      {pendingSchedulingJobs.length > 0 && (
+        <div className="bg-orange-50 border-2 border-orange-300 rounded-xl shadow-sm p-6 mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center">
+              <AlertCircle className="w-6 h-6 text-orange-600 mr-3" />
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Installation Scheduling Required</h2>
+                <p className="text-sm text-orange-700">Deposits paid - schedule installations now</p>
+              </div>
+            </div>
+            <span className="bg-orange-100 text-orange-800 px-3 py-1 rounded-full text-sm font-medium">
+              {pendingSchedulingJobs.length} pending
+            </span>
+          </div>
+
+          <div className="space-y-4">
+            {pendingSchedulingJobs.map(job => (
+              <div key={job.id} className="bg-white border border-orange-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
+                      <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                        ✓ Deposit Paid
+                      </span>
+                    </div>
+
+                    <p className="text-gray-600 mb-3">{job.description}</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 mb-3">
+                      <div className="flex items-center">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Measured: {new Date(job.scheduledDate).toLocaleDateString()}
+                      </div>
+                      <div className="flex items-center">
+                        <User className="w-4 h-4 mr-2" />
+                        {customers.find(c => c.id === job.customerId)?.name || 'Unknown'}
+                      </div>
+                      <div className="flex items-center text-green-600 font-medium">
+                        ${job.deposit?.toFixed(2)} deposited
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setSelectedJob(job);
+                      setShowSchedulingModal(true);
+                    }}
+                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                  >
+                    <Calendar className="w-4 h-4 mr-2 inline" />
+                    Schedule Installation
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Unassigned Jobs */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -330,6 +489,27 @@ export function JobAssignmentCenter() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Installation Scheduling Modal */}
+      {showSchedulingModal && selectedJob && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="max-w-4xl w-full">
+            <InstallationSchedulingScreen
+              job={selectedJob}
+              onSchedule={handleScheduleInstallation}
+              onSkip={() => {
+                alert('Installation scheduling has been deferred. This job will remain in the pending list.');
+                setShowSchedulingModal(false);
+                setSelectedJob(null);
+              }}
+              onCancel={() => {
+                setShowSchedulingModal(false);
+                setSelectedJob(null);
+              }}
+            />
           </div>
         </div>
       )}

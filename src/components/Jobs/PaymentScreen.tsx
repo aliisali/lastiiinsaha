@@ -4,7 +4,7 @@ import { Job } from '../../types';
 
 interface PaymentScreenProps {
   job: Job;
-  onComplete: (data: { deposit?: number; depositPaid: boolean; paymentMethod: string; customerReference?: string }) => void;
+  onComplete: (data: { deposit?: number; depositPaid: boolean; depositPaidAt?: string; paymentMethod: string; customerReference?: string }) => void;
 }
 
 export function PaymentScreen({ job, onComplete }: PaymentScreenProps) {
@@ -53,6 +53,7 @@ export function PaymentScreen({ job, onComplete }: PaymentScreenProps) {
     onComplete({
       deposit: depositAmount,
       depositPaid: paymentComplete,
+      depositPaidAt: paymentComplete ? new Date().toISOString() : undefined,
       paymentMethod,
       customerReference
     });
