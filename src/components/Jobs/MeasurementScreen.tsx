@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Ruler, Save, ArrowRight, Trash2, Edit, X, Copy, Camera } from 'lucide-react';
+import { Plus, Ruler, Save, ArrowRight, Trash2, Edit, X, Copy, Camera, Package } from 'lucide-react';
 import { Job, JobMeasurement } from '../../types';
 import { ARCameraCapture } from '../ARModule/ARCameraCapture';
+import { useData } from '../../contexts/DataContext';
 
 interface MeasurementScreenProps {
   job: Job;
@@ -9,6 +10,7 @@ interface MeasurementScreenProps {
 }
 
 export function MeasurementScreen({ job, onComplete }: MeasurementScreenProps) {
+  const { products } = useData();
   const [measurements, setMeasurements] = useState<JobMeasurement[]>(job.measurements || []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showARCamera, setShowARCamera] = useState(false);
@@ -20,8 +22,13 @@ export function MeasurementScreen({ job, onComplete }: MeasurementScreenProps) {
     notes: '',
     location: '',
     controlType: 'none' as 'chain-cord' | 'wand' | 'none',
-    bracketType: 'top-fix' as 'top-fix' | 'face-fix'
+    bracketType: 'top-fix' as 'top-fix' | 'face-fix',
+    productId: '',
+    productName: '',
+    productPrice: 0
   });
+
+  const activeProducts = products.filter(p => p.isActive);
 
   const handleAddMeasurement = () => {
     if (!newMeasurement.windowId || !newMeasurement.width || !newMeasurement.height) {
@@ -38,6 +45,9 @@ export function MeasurementScreen({ job, onComplete }: MeasurementScreenProps) {
       location: newMeasurement.location,
       controlType: newMeasurement.controlType,
       bracketType: newMeasurement.bracketType,
+      productId: newMeasurement.productId || undefined,
+      productName: newMeasurement.productName || undefined,
+      productPrice: newMeasurement.productPrice || undefined,
       createdAt: new Date().toISOString()
     };
 
@@ -49,7 +59,10 @@ export function MeasurementScreen({ job, onComplete }: MeasurementScreenProps) {
       notes: '',
       location: '',
       controlType: 'none',
-      bracketType: 'top-fix'
+      bracketType: 'top-fix',
+      productId: '',
+      productName: '',
+      productPrice: 0
     });
   };
 
@@ -78,7 +91,10 @@ export function MeasurementScreen({ job, onComplete }: MeasurementScreenProps) {
       notes: measurement.notes || '',
       location: measurement.location || '',
       controlType: measurement.controlType || 'none',
-      bracketType: measurement.bracketType || 'top-fix'
+      bracketType: measurement.bracketType || 'top-fix',
+      productId: measurement.productId || '',
+      productName: measurement.productName || '',
+      productPrice: measurement.productPrice || 0
     });
   };
 
@@ -97,7 +113,10 @@ export function MeasurementScreen({ job, onComplete }: MeasurementScreenProps) {
         notes: newMeasurement.notes,
         location: newMeasurement.location,
         controlType: newMeasurement.controlType,
-        bracketType: newMeasurement.bracketType
+        bracketType: newMeasurement.bracketType,
+        productId: newMeasurement.productId || undefined,
+        productName: newMeasurement.productName || undefined,
+        productPrice: newMeasurement.productPrice || undefined
       } : m
     ));
 
@@ -109,8 +128,30 @@ export function MeasurementScreen({ job, onComplete }: MeasurementScreenProps) {
       notes: '',
       location: '',
       controlType: 'none',
-      bracketType: 'top-fix'
+      bracketType: 'top-fix',
+      productId: '',
+      productName: '',
+      productPrice: 0
     });
+  };
+
+  const handleProductChange = (productId: string) => {
+    const product = activeProducts.find(p => p.id === productId);
+    if (product) {
+      setNewMeasurement({
+        ...newMeasurement,
+        productId: product.id,
+        productName: product.name,
+        productPrice: product.price
+      });
+    } else {
+      setNewMeasurement({
+        ...newMeasurement,
+        productId: '',
+        productName: '',
+        productPrice: 0
+      });
+    }
   };
 
   const handleCancelEdit = () => {
@@ -122,7 +163,10 @@ export function MeasurementScreen({ job, onComplete }: MeasurementScreenProps) {
       notes: '',
       location: '',
       controlType: 'none',
-      bracketType: 'top-fix'
+      bracketType: 'top-fix',
+      productId: '',
+      productName: '',
+      productPrice: 0
     });
   };
 
@@ -252,6 +296,30 @@ export function MeasurementScreen({ job, onComplete }: MeasurementScreenProps) {
 
           <div className="md:col-span-3">
             <label className="block text-sm font-medium text-gray-700 mb-1">
+              <Package className="w-4 h-4 inline mr-1" />
+              Select Product (Optional)
+            </label>
+            <select
+              value={newMeasurement.productId}
+              onChange={(e) => handleProductChange(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">-- No Product Selected --</option>
+              {activeProducts.map(product => (
+                <option key={product.id} value={product.id}>
+                  {product.name} - ${product.price}
+                </option>
+              ))}
+            </select>
+            {newMeasurement.productId && newMeasurement.productPrice > 0 && (
+              <p className="text-sm text-green-600 mt-1 font-medium">
+                Selected: {newMeasurement.productName} - ${newMeasurement.productPrice.toFixed(2)}
+              </p>
+            )}
+          </div>
+
+          <div className="md:col-span-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Notes
             </label>
             <input
@@ -307,7 +375,7 @@ export function MeasurementScreen({ job, onComplete }: MeasurementScreenProps) {
                         <p className="text-sm text-gray-600">
                           {measurement.width} × {measurement.height} cm
                         </p>
-                        <div className="flex gap-2 mt-1">
+                        <div className="flex gap-2 mt-1 flex-wrap">
                           {measurement.controlType && measurement.controlType !== 'none' && (
                             <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
                               {measurement.controlType === 'chain-cord' ? 'Chain & Cord' : 'Wand'}
@@ -319,6 +387,17 @@ export function MeasurementScreen({ job, onComplete }: MeasurementScreenProps) {
                             </span>
                           )}
                         </div>
+                        {measurement.productName && measurement.productPrice && (
+                          <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
+                            <p className="text-sm font-semibold text-blue-900 flex items-center">
+                              <Package className="w-4 h-4 mr-1" />
+                              {measurement.productName}
+                            </p>
+                            <p className="text-sm text-blue-700 font-medium">
+                              Price: ${measurement.productPrice.toFixed(2)}
+                            </p>
+                          </div>
+                        )}
                         {measurement.notes && (
                           <p className="text-sm text-gray-500 italic mt-1">{measurement.notes}</p>
                         )}

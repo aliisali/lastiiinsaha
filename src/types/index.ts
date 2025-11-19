@@ -95,6 +95,9 @@ export interface JobMeasurement {
   controlType?: 'chain-cord' | 'wand' | 'none';
   bracketType?: 'top-fix' | 'face-fix';
   photos?: string[];
+  productId?: string;
+  productName?: string;
+  productPrice?: number;
   createdAt: string;
 }
 

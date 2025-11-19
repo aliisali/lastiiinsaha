@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, FileText, Send, Download, Ruler, Calendar, User, MapPin } from 'lucide-react';
+import { CheckCircle, FileText, Send, Download, Ruler, Calendar, User, MapPin, Package } from 'lucide-react';
 import { Job, JobMeasurement } from '../../../types';
 import { supabase } from '../../../lib/supabase';
 
@@ -91,11 +91,28 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
 
   const generateInvoice = () => {
     const selectedProducts = job.selectedProducts || [];
+    const measurements = job.measurements || [];
 
-    // Calculate subtotal from selected products
-    const calculatedSubtotal = selectedProducts.reduce((sum, product) => {
-      const price = parseFloat(String(product.price || 0));
-      const quantity = product.quantity || 1;
+    // Create invoice items from measurements with products
+    const measurementItems = measurements
+      .filter(m => m.productName && m.productPrice)
+      .map(m => ({
+        id: m.id,
+        productName: `${m.productName} (${m.location || m.windowId})`,
+        productId: m.productId || '',
+        quantity: 1,
+        price: m.productPrice || 0,
+        windowId: m.windowId,
+        location: m.location
+      }));
+
+    // Combine measurement items with selected products
+    const allItems = [...measurementItems, ...selectedProducts];
+
+    // Calculate subtotal from all items
+    const calculatedSubtotal = allItems.reduce((sum, item) => {
+      const price = parseFloat(String(item.price || 0));
+      const quantity = item.quantity || 1;
       return sum + (price * quantity);
     }, 0);
 
@@ -108,8 +125,8 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
       invoiceNumber: `INV-${job.id}-${Date.now()}`,
       date: new Date().toLocaleDateString(),
       customer: null,
-      items: selectedProducts,
-      measurements: job.measurements || [],
+      items: allItems,
+      measurements: measurements,
       subtotal: subtotal,
       deposit: deposit,
       balance: balance,
@@ -211,7 +228,7 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
               <Ruler className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <h4 className="font-semibold text-lg text-gray-900">Window Measurements</h4>
+              <h4 className="font-semibold text-lg text-gray-900">Window Measurements & Products</h4>
               <p className="text-sm text-gray-600">From measurement appointment - {job.measurements.length} window{job.measurements.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
@@ -256,6 +273,25 @@ export function InvoiceStep({ job, installationData, onComplete }: InvoiceStepPr
                         </div>
                       )}
                     </div>
+
+                    {measurement.productName && measurement.productPrice && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-blue-900 flex items-center">
+                              <Package className="w-4 h-4 mr-1" />
+                              Product: {measurement.productName}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-blue-900">
+                              ${measurement.productPrice.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {measurement.notes && (
                       <p className="text-sm text-gray-600 mt-2">
                         <span className="font-medium">Notes:</span> {measurement.notes}

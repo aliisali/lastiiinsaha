@@ -137,6 +137,8 @@ export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepP
                     <th className="text-left py-2 px-3 text-sm font-semibold text-gray-700">Area</th>
                     <th className="text-center py-2 px-3 text-sm font-semibold text-gray-700">Width</th>
                     <th className="text-center py-2 px-3 text-sm font-semibold text-gray-700">Depth</th>
+                    <th className="text-left py-2 px-3 text-sm font-semibold text-gray-700">Product</th>
+                    <th className="text-right py-2 px-3 text-sm font-semibold text-gray-700">Price</th>
                     <th className="text-left py-2 px-3 text-sm font-semibold text-gray-700">Notes</th>
                   </tr>
                 </thead>
@@ -146,6 +148,10 @@ export function OrderConfirmationStep({ job, onConfirm }: OrderConfirmationStepP
                       <td className="py-2 px-3 text-gray-900">{measurement.area || measurement.location || `Window ${index + 1}`}</td>
                       <td className="py-2 px-3 text-center text-gray-900">{measurement.width}cm</td>
                       <td className="py-2 px-3 text-center text-gray-900">{measurement.depth || measurement.height}cm</td>
+                      <td className="py-2 px-3 text-gray-900">{measurement.productName || '-'}</td>
+                      <td className="py-2 px-3 text-right text-gray-900 font-semibold">
+                        {measurement.productPrice ? `$${measurement.productPrice.toFixed(2)}` : '-'}
+                      </td>
                       <td className="py-2 px-3 text-gray-600 text-sm">{measurement.comments || measurement.notes || '-'}</td>
                     </tr>
                   ))}
